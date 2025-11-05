@@ -3,7 +3,7 @@ use serde::Deserialize;
 use std::fs::File;
 use std::path::Path;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Assembly {
     #[serde(rename = "assembly_sku")]
     pub assembly_sku: String,
@@ -13,7 +13,7 @@ pub struct Assembly {
     pub uom: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Part {
     #[serde(rename = "part_sku")]
     pub part_sku: String,
@@ -23,7 +23,7 @@ pub struct Part {
     pub uom: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct BomItem {
     #[serde(rename = "parent_assembly_sku")]
     pub parent_assembly_sku: String,
@@ -39,7 +39,7 @@ pub struct BomItem {
     pub is_phantom: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct StockRow {
     #[serde(rename = "sku")]
     pub sku: String,
