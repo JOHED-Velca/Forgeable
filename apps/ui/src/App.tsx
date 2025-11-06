@@ -1,35 +1,61 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useState } from "react";
+import { loadData } from "./services/native";
+import { indexBomByParent, explodeBom } from "./domain/bomExplode";
+import { computeMaxBuildable } from "./domain/limitingReagent";
+import type { DataSnapshot, SKU } from "./domain/types";
 
-function App() {
-  const [count, setCount] = useState(0)
+const DATA_DIR = "/home/johed/Forgeable-data"; // your dev path
+
+export default function App() {
+  const [snap, setSnap] = useState<DataSnapshot | null>(null);
+  const [log, setLog] = useState<string>("Loading...");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const ds = await loadData(DATA_DIR);
+        setSnap(ds);
+
+        const bomByParent = indexBomByParent(ds.bom_items);
+        const isAssembly = (sku: SKU) =>
+          ds.assemblies.some((a) => a.assemblySku === sku);
+
+        // pick a panel to test
+        const panelSku: SKU = "TS2_TYPE01";
+
+        const req1 = explodeBom(panelSku, bomByParent, isAssembly, {
+          includeScrap: true,
+          minYield: 0.01,
+        });
+
+        const buildability = computeMaxBuildable(req1, ds.stock, true);
+
+        const message =
+          `Loaded ${ds.assemblies.length} panels, ${ds.parts.length} parts.\n` +
+          `Panel tested: ${panelSku}\n` +
+          `Requirements per unit: ${JSON.stringify(req1, null, 2)}\n` +
+          `Max buildable: ${buildability.maxBuildable}\n` +
+          `Limiting: ${buildability.limitingComponents
+            .map((l) => l.sku)
+            .join(", ")}`;
+
+        console.log(message);
+        setLog(message);
+      } catch (e: any) {
+        console.error(e);
+        setLog(String(e));
+      }
+    })();
+  }, []);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
+    <div style={{ padding: 16, fontFamily: "Inter, system-ui, sans-serif" }}>
+      <h1>Forgeable — Dev Check</h1>
+      <pre style={{ whiteSpace: "pre-wrap" }}>{log}</pre>
+      <p style={{ opacity: 0.7 }}>
+        If you see “Loaded … panels, … parts” and “Max buildable …”, the core
+        path works.
       </p>
-    </>
-  )
+    </div>
+  );
 }
-
-export default App
