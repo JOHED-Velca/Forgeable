@@ -29,10 +29,30 @@ export default function App() {
 
       if (result.assemblies.length > 0) {
         const firstAssembly = result.assemblies[0];
+        console.log("First assembly object:", firstAssembly);
+        console.log("Assembly keys:", Object.keys(firstAssembly));
+
+        setTestStatus(
+          `First assembly data: ${JSON.stringify(firstAssembly, null, 2)}`
+        );
+
+        // Check if assemblySku is defined
+        if (!firstAssembly.assemblySku) {
+          setTestStatus(
+            `❌ ERROR: First assembly has undefined assemblySku! Object: ${JSON.stringify(
+              firstAssembly
+            )}`
+          );
+          return;
+        }
+
         const assemblySkus = new Set(
           result.assemblies.map((a) => a.assemblySku)
         );
         const isAssembly = (sku: SKU) => assemblySkus.has(sku);
+
+        setTestStatus(`About to explode BOM for: ${firstAssembly.assemblySku}`);
+
         const exploded = explodeBom(
           firstAssembly.assemblySku,
           indexed,
