@@ -1,23 +1,54 @@
 import { useState } from "react";
+import { loadData } from "./services/native";
+import type { SKU, DataSnapshot } from "./domain/types";
+import { indexBomByParent, explodeBom } from "./domain/bomExplode";
 
-// Test if the issue is with the explodeBom import path
-// Let's try importing from a different way
 export default function App() {
   const [testStatus, setTestStatus] = useState<string>(
-    "TESTING - No BOM Import"
+    "Ready to test BOM explosion!"
   );
 
-  console.log("🚀 App component rendered - NO BOM IMPORT TEST");
+  console.log("🚀 App component rendered - BOM FUNCTIONS IMPORTED");
+  console.log("Functions available:", {
+    loadData: typeof loadData,
+    indexBomByParent: typeof indexBomByParent,
+    explodeBom: typeof explodeBom,
+  });
 
-  const testImport = async () => {
+  const testDataLoad = async () => {
+    setTestStatus("Testing data loading and BOM explosion...");
     try {
-      console.log("About to import bomExplode...");
-      const { explodeBom } = await import("./domain/bomExplode");
-      console.log("Successfully imported:", typeof explodeBom);
-      setTestStatus("Dynamic import successful!");
+      const DATA_DIR = "/home/johed/Documents/CsvFiles/Forgeable/data";
+      const result = await loadData(DATA_DIR);
+
+      console.log("Data loaded successfully:", result);
+
+      // Test BOM explosion functions
+      const indexed = indexBomByParent(result.bom_items);
+      console.log("BOM indexed:", indexed);
+
+      if (result.assemblies.length > 0) {
+        const firstAssembly = result.assemblies[0];
+        const assemblySkus = new Set(
+          result.assemblies.map((a) => a.assemblySku)
+        );
+        const isAssembly = (sku: SKU) => assemblySkus.has(sku);
+        const exploded = explodeBom(
+          firstAssembly.assemblySku,
+          indexed,
+          isAssembly
+        );
+        console.log("BOM exploded:", exploded);
+
+        setTestStatus(
+          `✅ SUCCESS! Loaded ${result.assemblies.length} assemblies, BOM explosion works!`
+        );
+      } else {
+        setTestStatus("✅ Data loaded, but no assemblies found");
+      }
     } catch (error) {
-      console.error("Import failed:", error);
-      setTestStatus(`Import failed: ${error}`);
+      console.error("Error:", error);
+      setTestStatus(`❌ ERROR: ${String(error)}`);
     }
   };
 
@@ -40,7 +71,7 @@ export default function App() {
         </p>
       </div>
       <button
-        onClick={testImport}
+        onClick={testDataLoad}
         style={{
           background: "#007bff",
           color: "white",
@@ -50,10 +81,10 @@ export default function App() {
           cursor: "pointer",
         }}
       >
-        Test Dynamic Import
+        Test BOM Explosion
       </button>
       <p style={{ opacity: 0.7 }}>
-        Testing if basic React app works without any imports...
+        Testing complete BOM explosion functionality with CSV data...
       </p>
     </div>
   );
