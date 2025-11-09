@@ -22,10 +22,6 @@ export function explodeBom(
   isAssembly: (sku: SKU) => boolean,
   options = { includeScrap: true, minYield: 0.01 }
 ): RequirementsPerUnit {
-  console.log(`explodeBom called with assemblySku: "${assemblySku}"`);
-  console.log(`bomByParent has ${bomByParent.size} entries`);
-  console.log(`bomByParent keys:`, Array.from(bomByParent.keys()));
-
   const visited = new Set<SKU>();
   const req = new Map<SKU, number>();
 
@@ -34,14 +30,11 @@ export function explodeBom(
   }
 
   function dfs(currentSku: SKU, multiplier: number) {
-    console.log(`DFS: currentSku=${currentSku}, multiplier=${multiplier}`);
-
     if (!currentSku) {
       throw new Error(`DFS called with undefined/null SKU`);
     }
 
     const children = bomByParent.get(currentSku) ?? [];
-    console.log(`Children for ${currentSku}:`, children.length);
 
     if (children.length === 0) {
       addReq(currentSku, multiplier);
@@ -54,8 +47,6 @@ export function explodeBom(
     visited.add(currentSku);
 
     for (const item of children) {
-      console.log(`Processing BOM item:`, item);
-
       let effective = item.qtyPer;
       if (options.includeScrap) {
         effective = effective * (1 + item.scrapRate);
@@ -64,19 +55,10 @@ export function explodeBom(
       effective = effective / yieldEff;
 
       const hasChildren = (bomByParent.get(item.componentSku) ?? []).length > 0;
-      console.log(
-        `Component ${item.componentSku}: hasChildren=${hasChildren}, isPhantom=${item.isPhantom}`
-      );
 
       if (item.isPhantom || hasChildren) {
-        console.log(`About to recurse into: ${item.componentSku}`);
         dfs(item.componentSku, multiplier * effective);
       } else {
-        console.log(
-          `Adding leaf part: ${item.componentSku}, qty: ${
-            multiplier * effective
-          }`
-        );
         addReq(item.componentSku, multiplier * effective);
       }
     }
