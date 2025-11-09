@@ -294,7 +294,7 @@ export default function App() {
 
     if (!selectedAssembly) {
       setTestStatus(
-        "❌ No assembly selected. Please choose an assembly from the dropdown."
+        "❌ No panel selected. Please choose a panel from the dropdown."
       );
       return;
     }
@@ -337,7 +337,7 @@ export default function App() {
       const assemblyBomItems = indexed.get(selectedAssembly);
       if (!assemblyBomItems || assemblyBomItems.length === 0) {
         setTestStatus(
-          `⚠️ No BOM items found for assembly ${selectedAssembly}. It may be a standalone part.`
+          `⚠️ No BOM items found for panel ${selectedAssembly}. It may be a standalone part.`
         );
         return;
       }
@@ -363,7 +363,7 @@ export default function App() {
 
         const partCount = Object.keys(results).length;
         setTestStatus(
-          `✅ Analysis complete! Found ${partCount} parts, can build ${buildabilityResults.maxBuildable} assemblies`
+          `✅ Analysis complete! Found ${partCount} parts, can build ${buildabilityResults.maxBuildable} panels`
         );
       } else {
         const partCount = Object.keys(results).length;
@@ -484,7 +484,7 @@ export default function App() {
                 minWidth: 200,
               }}
             >
-              <option value="">Select an assembly...</option>
+              <option value="">Select a panel...</option>
               {data.assemblies.map((assembly) => (
                 <option
                   key={assembly.assembly_sku}
@@ -510,7 +510,7 @@ export default function App() {
                 fontSize: 14,
               }}
             >
-              {isLoading ? "Analyzing..." : "Analyze Assembly"}
+              {isLoading ? "Analyzing..." : "Analyze Panel"}
             </button>
           </div>
         </div>
