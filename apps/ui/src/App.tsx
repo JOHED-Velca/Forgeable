@@ -611,7 +611,7 @@ export default function App() {
                           fontFamily: "monospace",
                         }}
                       >
-                        {sku}
+                        {sku === "CABLE_GRAY" ? "Gray cable" : sku}
                       </td>
                       <td
                         style={{
@@ -620,9 +620,21 @@ export default function App() {
                           fontSize: 13,
                         }}
                       >
-                        {qty % 1 === 0
-                          ? qty.toString()
-                          : qty.toFixed(2).replace(/\.?0+$/, "")}
+                        {(() => {
+                          const formattedQty =
+                            qty % 1 === 0
+                              ? qty.toString()
+                              : qty.toFixed(2).replace(/\.?0+$/, "");
+
+                          if (sku === "CABLE_GRAY") {
+                            return `${formattedQty} inches`;
+                          } else {
+                            const numQty = parseFloat(formattedQty);
+                            return `${formattedQty} ${
+                              numQty === 1 ? "piece" : "pieces"
+                            }`;
+                          }
+                        })()}
                       </td>
                     </tr>
                   ))}
