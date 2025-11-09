@@ -280,67 +280,145 @@ export default function App() {
 
       {/* Buildability Section */}
       {buildability && (
-        <div style={{ background: "#fff", border: "1px solid #ddd", padding: 16, borderRadius: 8 }}>
-          <h3 style={{ margin: 0, marginBottom: 12 }}>4. Buildability Analysis</h3>
-          
-          <div style={{ 
-            background: buildability.maxBuildable > 0 ? "#d4edda" : "#f8d7da", 
-            border: `1px solid ${buildability.maxBuildable > 0 ? "#c3e6cb" : "#f5c6cb"}`,
-            padding: 12, 
-            borderRadius: 4, 
-            marginBottom: 16 
-          }}>
-            <h4 style={{ 
-              margin: 0, 
-              color: buildability.maxBuildable > 0 ? "#155724" : "#721c24",
-              fontSize: 16 
-            }}>
-              {buildability.maxBuildable > 0 
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid #ddd",
+            padding: 16,
+            borderRadius: 8,
+          }}
+        >
+          <h3 style={{ margin: 0, marginBottom: 12 }}>
+            4. Buildability Analysis
+          </h3>
+
+          <div
+            style={{
+              background: buildability.maxBuildable > 0 ? "#d4edda" : "#f8d7da",
+              border: `1px solid ${
+                buildability.maxBuildable > 0 ? "#c3e6cb" : "#f5c6cb"
+              }`,
+              padding: 12,
+              borderRadius: 4,
+              marginBottom: 16,
+            }}
+          >
+            <h4
+              style={{
+                margin: 0,
+                color: buildability.maxBuildable > 0 ? "#155724" : "#721c24",
+                fontSize: 16,
+              }}
+            >
+              {buildability.maxBuildable > 0
                 ? `✅ Can build ${buildability.maxBuildable} assemblies`
-                : "❌ Cannot build any assemblies"
-              }
+                : "❌ Cannot build any assemblies"}
             </h4>
           </div>
 
           {buildability.limitingComponents.length > 0 && (
             <div>
-              <h4 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Limiting Components:</h4>
-              <div style={{ maxHeight: 300, overflowY: "auto", border: "1px solid #eee", borderRadius: 4 }}>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: 14 }}>
+                Limiting Components:
+              </h4>
+              <div
+                style={{
+                  maxHeight: 300,
+                  overflowY: "auto",
+                  border: "1px solid #eee",
+                  borderRadius: 4,
+                }}
+              >
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "#f8f9fa" }}>
-                      <th style={{ padding: "8px 12px", textAlign: "left", borderBottom: "1px solid #dee2e6", fontSize: 12 }}>
+                      <th
+                        style={{
+                          padding: "8px 12px",
+                          textAlign: "left",
+                          borderBottom: "1px solid #dee2e6",
+                          fontSize: 12,
+                        }}
+                      >
                         Part SKU
                       </th>
-                      <th style={{ padding: "8px 12px", textAlign: "right", borderBottom: "1px solid #dee2e6", fontSize: 12 }}>
+                      <th
+                        style={{
+                          padding: "8px 12px",
+                          textAlign: "right",
+                          borderBottom: "1px solid #dee2e6",
+                          fontSize: 12,
+                        }}
+                      >
                         Available
                       </th>
-                      <th style={{ padding: "8px 12px", textAlign: "right", borderBottom: "1px solid #dee2e6", fontSize: 12 }}>
+                      <th
+                        style={{
+                          padding: "8px 12px",
+                          textAlign: "right",
+                          borderBottom: "1px solid #dee2e6",
+                          fontSize: 12,
+                        }}
+                      >
                         Required/Unit
                       </th>
-                      <th style={{ padding: "8px 12px", textAlign: "right", borderBottom: "1px solid #dee2e6", fontSize: 12 }}>
+                      <th
+                        style={{
+                          padding: "8px 12px",
+                          textAlign: "right",
+                          borderBottom: "1px solid #dee2e6",
+                          fontSize: 12,
+                        }}
+                      >
                         Possible Builds
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {buildability.limitingComponents.map((component) => (
-                      <tr key={component.sku} style={{ borderBottom: "1px solid #f1f3f4" }}>
-                        <td style={{ padding: "6px 12px", fontSize: 12, fontFamily: "monospace" }}>
+                      <tr
+                        key={component.sku}
+                        style={{ borderBottom: "1px solid #f1f3f4" }}
+                      >
+                        <td
+                          style={{
+                            padding: "6px 12px",
+                            fontSize: 12,
+                            fontFamily: "monospace",
+                          }}
+                        >
                           {component.sku}
                         </td>
-                        <td style={{ padding: "6px 12px", textAlign: "right", fontSize: 12 }}>
+                        <td
+                          style={{
+                            padding: "6px 12px",
+                            textAlign: "right",
+                            fontSize: 12,
+                          }}
+                        >
                           {component.available.toFixed(2)}
                         </td>
-                        <td style={{ padding: "6px 12px", textAlign: "right", fontSize: 12 }}>
+                        <td
+                          style={{
+                            padding: "6px 12px",
+                            textAlign: "right",
+                            fontSize: 12,
+                          }}
+                        >
                           {component.reqPerUnit.toFixed(4)}
                         </td>
-                        <td style={{ 
-                          padding: "6px 12px", 
-                          textAlign: "right", 
-                          fontSize: 12,
-                          background: component.candidateBuilds === buildability.maxBuildable ? "#fff3cd" : "transparent"
-                        }}>
+                        <td
+                          style={{
+                            padding: "6px 12px",
+                            textAlign: "right",
+                            fontSize: 12,
+                            background:
+                              component.candidateBuilds ===
+                              buildability.maxBuildable
+                                ? "#fff3cd"
+                                : "transparent",
+                          }}
+                        >
                           {component.candidateBuilds}
                         </td>
                       </tr>
