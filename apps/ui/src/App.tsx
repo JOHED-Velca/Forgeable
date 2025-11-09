@@ -361,9 +361,41 @@ export default function App() {
         const buildabilityResults = computeMaxBuildable(results, data.stock);
         setBuildability(buildabilityResults);
 
-        const partCount = Object.keys(results).length;
+        // Calculate buildability for all panel types
+        const allPanelBuildability: string[] = [];
+        for (const assembly of data.assemblies) {
+          try {
+            const assemblyResults = explodeBom(
+              assembly.assembly_sku,
+              indexed,
+              isAssembly
+            );
+            const assemblyBuildability = computeMaxBuildable(
+              assemblyResults,
+              data.stock
+            );
+
+            // Clean up panel name: "TS2_TYPE01" -> "Type01"
+            const cleanPanelName = assembly.assembly_sku
+              .replace(/^TS2_/, "") // Remove "TS2_" prefix
+              .replace(/TYPE/, "Type"); // Change "TYPE" to "Type"
+
+            allPanelBuildability.push(
+              `${cleanPanelName}: ${assemblyBuildability.maxBuildable} panels`
+            );
+          } catch (error) {
+            // Skip panels that can't be analyzed (e.g., no BOM data)
+            const cleanPanelName = assembly.assembly_sku
+              .replace(/^TS2_/, "")
+              .replace(/TYPE/, "Type");
+            allPanelBuildability.push(`${cleanPanelName}: Unable to analyze`);
+          }
+        }
+
         setTestStatus(
-          `✅ Analysis complete! Found ${partCount} parts, can build ${buildabilityResults.maxBuildable} panels`
+          `✅ Analysis complete! Panel buildability with current stock:\n${allPanelBuildability.join(
+            "\n"
+          )}`
         );
       } else {
         const partCount = Object.keys(results).length;
@@ -414,7 +446,7 @@ export default function App() {
         }}
       >
         <h3 style={{ margin: 0, marginBottom: 8, color: "#0066cc" }}>Status</h3>
-        <p style={{ margin: 0, fontSize: 14 }}>
+        <p style={{ margin: 0, fontSize: 14, whiteSpace: "pre-line" }}>
           <strong>{testStatus}</strong>
         </p>
       </div>
