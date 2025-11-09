@@ -560,7 +560,7 @@ export default function App() {
           }}
         >
           <h3 style={{ margin: 0, marginBottom: 12 }}>
-            3. BOM Explosion Results
+            3. Parts Breakdown for Manufacturing
           </h3>
           <p style={{ margin: "0 0 12px 0", color: "#666", fontSize: 14 }}>
             Parts required to build 1x {selectedAssembly}:
