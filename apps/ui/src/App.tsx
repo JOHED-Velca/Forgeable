@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { loadData } from "./services/native";
-import type { SKU, DataSnapshot } from "./domain/types";
+import type { SKU, DataSnapshot, Buildability } from "./domain/types";
 import { indexBomByParent, explodeBom } from "./domain/bomExplode";
+import { computeMaxBuildable } from "./domain/limitingReagent";
 
 export default function App() {
   const [testStatus, setTestStatus] = useState<string>("Ready to load data");
@@ -10,6 +11,7 @@ export default function App() {
   const [bomResults, setBomResults] = useState<Record<string, number> | null>(
     null
   );
+  const [buildability, setBuildability] = useState<Buildability | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const loadDataFromCsv = async () => {
@@ -43,7 +45,7 @@ export default function App() {
     }
 
     setIsLoading(true);
-    setTestStatus(`Exploding BOM for ${selectedAssembly}...`);
+    setTestStatus(`Analyzing ${selectedAssembly}...`);
     try {
       const indexed = indexBomByParent(data.bom_items);
       const assemblySkus = new Set(data.assemblies.map((a) => a.assembly_sku));
@@ -52,8 +54,14 @@ export default function App() {
       const results = explodeBom(selectedAssembly, indexed, isAssembly);
       setBomResults(results);
 
+      // Calculate buildability
+      const buildabilityResults = computeMaxBuildable(results, data.stock);
+      setBuildability(buildabilityResults);
+
       const partCount = Object.keys(results).length;
-      setTestStatus(`✅ BOM exploded! Found ${partCount} unique parts required`);
+      setTestStatus(
+        `✅ Analysis complete! Found ${partCount} parts, can build ${buildabilityResults.maxBuildable} assemblies`
+      );
     } catch (error) {
       console.error("Error exploding BOM:", error);
       setTestStatus(`❌ BOM Explosion Error: ${String(error)}`);
@@ -178,7 +186,7 @@ export default function App() {
                 fontSize: 14,
               }}
             >
-              {isLoading ? "Processing..." : "Explode BOM"}
+              {isLoading ? "Analyzing..." : "Analyze Assembly"}
             </button>
           </div>
         </div>
@@ -267,6 +275,81 @@ export default function App() {
           <p style={{ margin: "12px 0 0 0", fontSize: 12, color: "#666" }}>
             Total unique parts: {Object.keys(bomResults).length}
           </p>
+        </div>
+      )}
+
+      {/* Buildability Section */}
+      {buildability && (
+        <div style={{ background: "#fff", border: "1px solid #ddd", padding: 16, borderRadius: 8 }}>
+          <h3 style={{ margin: 0, marginBottom: 12 }}>4. Buildability Analysis</h3>
+          
+          <div style={{ 
+            background: buildability.maxBuildable > 0 ? "#d4edda" : "#f8d7da", 
+            border: `1px solid ${buildability.maxBuildable > 0 ? "#c3e6cb" : "#f5c6cb"}`,
+            padding: 12, 
+            borderRadius: 4, 
+            marginBottom: 16 
+          }}>
+            <h4 style={{ 
+              margin: 0, 
+              color: buildability.maxBuildable > 0 ? "#155724" : "#721c24",
+              fontSize: 16 
+            }}>
+              {buildability.maxBuildable > 0 
+                ? `✅ Can build ${buildability.maxBuildable} assemblies`
+                : "❌ Cannot build any assemblies"
+              }
+            </h4>
+          </div>
+
+          {buildability.limitingComponents.length > 0 && (
+            <div>
+              <h4 style={{ margin: "0 0 8px 0", fontSize: 14 }}>Limiting Components:</h4>
+              <div style={{ maxHeight: 300, overflowY: "auto", border: "1px solid #eee", borderRadius: 4 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ background: "#f8f9fa" }}>
+                      <th style={{ padding: "8px 12px", textAlign: "left", borderBottom: "1px solid #dee2e6", fontSize: 12 }}>
+                        Part SKU
+                      </th>
+                      <th style={{ padding: "8px 12px", textAlign: "right", borderBottom: "1px solid #dee2e6", fontSize: 12 }}>
+                        Available
+                      </th>
+                      <th style={{ padding: "8px 12px", textAlign: "right", borderBottom: "1px solid #dee2e6", fontSize: 12 }}>
+                        Required/Unit
+                      </th>
+                      <th style={{ padding: "8px 12px", textAlign: "right", borderBottom: "1px solid #dee2e6", fontSize: 12 }}>
+                        Possible Builds
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {buildability.limitingComponents.map((component) => (
+                      <tr key={component.sku} style={{ borderBottom: "1px solid #f1f3f4" }}>
+                        <td style={{ padding: "6px 12px", fontSize: 12, fontFamily: "monospace" }}>
+                          {component.sku}
+                        </td>
+                        <td style={{ padding: "6px 12px", textAlign: "right", fontSize: 12 }}>
+                          {component.available.toFixed(2)}
+                        </td>
+                        <td style={{ padding: "6px 12px", textAlign: "right", fontSize: 12 }}>
+                          {component.reqPerUnit.toFixed(4)}
+                        </td>
+                        <td style={{ 
+                          padding: "6px 12px", 
+                          textAlign: "right", 
+                          fontSize: 12,
+                          background: component.candidateBuilds === buildability.maxBuildable ? "#fff3cd" : "transparent"
+                        }}>
+                          {component.candidateBuilds}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

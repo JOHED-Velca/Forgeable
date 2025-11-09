@@ -1,4 +1,4 @@
-import { Buildability, RequirementsPerUnit, SKU, StockRow } from "./types";
+import type { Buildability, RequirementsPerUnit, SKU, StockRow } from "./types";
 
 export function computeMaxBuildable(
   reqPerUnit: RequirementsPerUnit,
