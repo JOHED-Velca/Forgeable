@@ -1,7 +1,7 @@
 export type SKU = string;
 
 export interface Assembly {
-  assemblySku: SKU;
+  assembly_sku: SKU;
   name: string;
   uom: string; // "ea"
 }

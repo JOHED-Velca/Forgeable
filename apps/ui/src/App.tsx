@@ -36,10 +36,10 @@ export default function App() {
           `First assembly data: ${JSON.stringify(firstAssembly, null, 2)}`
         );
 
-        // Check if assemblySku is defined
-        if (!firstAssembly.assemblySku) {
+        // Check if assembly_sku is defined
+        if (!firstAssembly.assembly_sku) {
           setTestStatus(
-            `❌ ERROR: First assembly has undefined assemblySku! Object: ${JSON.stringify(
+            `❌ ERROR: First assembly has undefined assembly_sku! Object: ${JSON.stringify(
               firstAssembly
             )}`
           );
@@ -47,14 +47,16 @@ export default function App() {
         }
 
         const assemblySkus = new Set(
-          result.assemblies.map((a) => a.assemblySku)
+          result.assemblies.map((a) => a.assembly_sku)
         );
         const isAssembly = (sku: SKU) => assemblySkus.has(sku);
 
-        setTestStatus(`About to explode BOM for: ${firstAssembly.assemblySku}`);
+        setTestStatus(
+          `About to explode BOM for: ${firstAssembly.assembly_sku}`
+        );
 
         const exploded = explodeBom(
-          firstAssembly.assemblySku,
+          firstAssembly.assembly_sku,
           indexed,
           isAssembly
         );
