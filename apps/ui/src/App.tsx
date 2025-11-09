@@ -14,6 +14,175 @@ export default function App() {
   const [buildability, setBuildability] = useState<Buildability | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // CSV Data validation function
+  const validateCsvData = (
+    data: DataSnapshot
+  ): { isValid: boolean; errors: string[]; warnings: string[] } => {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // Check assemblies data
+    if (!data.assemblies || data.assemblies.length === 0) {
+      errors.push("No assemblies data found");
+    } else {
+      // Check required fields in assemblies
+      const invalidAssemblies = data.assemblies.filter(
+        (a: any) =>
+          !a.assembly_sku ||
+          typeof a.assembly_sku !== "string" ||
+          a.assembly_sku.trim() === ""
+      );
+      if (invalidAssemblies.length > 0) {
+        errors.push(
+          `${invalidAssemblies.length} assemblies have missing or invalid assembly_sku`
+        );
+      }
+
+      // Check for duplicate assembly SKUs
+      const assemblySkus = data.assemblies.map((a: any) => a.assembly_sku);
+      const duplicateSkus = assemblySkus.filter(
+        (sku: any, index: number) => assemblySkus.indexOf(sku) !== index
+      );
+      if (duplicateSkus.length > 0) {
+        warnings.push(
+          `Duplicate assembly SKUs found: ${[...new Set(duplicateSkus)].join(
+            ", "
+          )}`
+        );
+      }
+    }
+
+    // Check parts data
+    if (!data.parts || data.parts.length === 0) {
+      errors.push("No parts data found");
+    } else {
+      // Check required fields in parts
+      const invalidParts = data.parts.filter(
+        (p: any) =>
+          !p.part_sku ||
+          typeof p.part_sku !== "string" ||
+          p.part_sku.trim() === ""
+      );
+      if (invalidParts.length > 0) {
+        errors.push(
+          `${invalidParts.length} parts have missing or invalid part_sku`
+        );
+      }
+
+      // Check for duplicate part SKUs
+      const partSkus = data.parts.map((p: any) => p.part_sku);
+      const duplicatePartSkus = partSkus.filter(
+        (sku: any, index: number) => partSkus.indexOf(sku) !== index
+      );
+      if (duplicatePartSkus.length > 0) {
+        warnings.push(
+          `Duplicate part SKUs found: ${[...new Set(duplicatePartSkus)].join(
+            ", "
+          )}`
+        );
+      }
+    }
+
+    // Check BOM items data
+    if (!data.bom_items || data.bom_items.length === 0) {
+      warnings.push(
+        "No BOM items data found - BOM explosion will not be possible"
+      );
+    } else {
+      // Check required fields in BOM items
+      const invalidBomItems = data.bom_items.filter(
+        (bom: any) =>
+          !bom.parent_sku ||
+          !bom.child_sku ||
+          typeof bom.parent_sku !== "string" ||
+          typeof bom.child_sku !== "string" ||
+          bom.parent_sku.trim() === "" ||
+          bom.child_sku.trim() === "" ||
+          typeof bom.quantity !== "number" ||
+          bom.quantity <= 0
+      );
+      if (invalidBomItems.length > 0) {
+        errors.push(
+          `${invalidBomItems.length} BOM items have missing or invalid parent_sku, child_sku, or quantity`
+        );
+      }
+
+      // Check for BOM items referencing non-existent assemblies or parts
+      if (data.assemblies && data.parts) {
+        const allSkus = new Set([
+          ...data.assemblies.map((a: any) => a.assembly_sku),
+          ...data.parts.map((p: any) => p.part_sku),
+        ]);
+
+        const orphanedBomItems = data.bom_items.filter(
+          (bom: any) =>
+            !allSkus.has(bom.parent_sku) || !allSkus.has(bom.child_sku)
+        );
+
+        if (orphanedBomItems.length > 0) {
+          warnings.push(
+            `${orphanedBomItems.length} BOM items reference SKUs not found in assemblies or parts data`
+          );
+        }
+      }
+    }
+
+    // Check stock data
+    if (!data.stock || data.stock.length === 0) {
+      warnings.push(
+        "No stock data found - buildability analysis will not be possible"
+      );
+    } else {
+      // Check required fields in stock
+      const invalidStock = data.stock.filter(
+        (s: any) =>
+          !s.part_sku ||
+          typeof s.part_sku !== "string" ||
+          s.part_sku.trim() === "" ||
+          typeof s.quantity !== "number" ||
+          s.quantity < 0
+      );
+      if (invalidStock.length > 0) {
+        errors.push(
+          `${invalidStock.length} stock items have missing or invalid part_sku or quantity`
+        );
+      }
+
+      // Check for stock items referencing non-existent parts
+      if (data.parts) {
+        const partSkus = new Set(data.parts.map((p: any) => p.part_sku));
+        const orphanedStock = data.stock.filter(
+          (s: any) => !partSkus.has(s.part_sku)
+        );
+
+        if (orphanedStock.length > 0) {
+          warnings.push(
+            `${orphanedStock.length} stock items reference parts not found in parts data`
+          );
+        }
+      }
+
+      // Check for duplicate stock entries
+      const stockSkus = data.stock.map((s: any) => s.part_sku);
+      const duplicateStockSkus = stockSkus.filter(
+        (sku: any, index: number) => stockSkus.indexOf(sku) !== index
+      );
+      if (duplicateStockSkus.length > 0) {
+        warnings.push(
+          `Duplicate stock entries found for: ${[
+            ...new Set(duplicateStockSkus),
+          ].join(", ")}`
+        );
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  };
+
   const loadDataFromCsv = async () => {
     setIsLoading(true);
     setTestStatus("Loading CSV data...");
@@ -21,10 +190,67 @@ export default function App() {
       const DATA_DIR = "/home/johed/Documents/CsvFiles/Forgeable/data";
       const result = await loadData(DATA_DIR);
 
+      // Validate loaded data
+      if (!result) {
+        throw new Error("No data received from CSV files");
+      }
+
+      if (!result.assemblies || !Array.isArray(result.assemblies)) {
+        throw new Error("Invalid or missing assemblies data");
+      }
+
+      if (!result.parts || !Array.isArray(result.parts)) {
+        throw new Error("Invalid or missing parts data");
+      }
+
+      if (!result.bom_items || !Array.isArray(result.bom_items)) {
+        throw new Error("Invalid or missing BOM items data");
+      }
+
+      if (!result.stock || !Array.isArray(result.stock)) {
+        throw new Error("Invalid or missing stock data");
+      }
+
+      // Check for empty data
+      if (result.assemblies.length === 0) {
+        setTestStatus("⚠️ Warning: No assemblies found in CSV data");
+        setData(result);
+        return;
+      }
+
+      if (result.bom_items.length === 0) {
+        setTestStatus(
+          "⚠️ Warning: No BOM items found - analysis will be limited"
+        );
+        setData(result);
+        return;
+      }
+
       setData(result);
-      setTestStatus(
-        `✅ Loaded ${result.assemblies.length} assemblies, ${result.parts.length} parts, ${result.bom_items.length} BOM items`
-      );
+
+      // Validate the loaded CSV data
+      const validation = validateCsvData(result);
+
+      if (!validation.isValid) {
+        setTestStatus(
+          `❌ Data validation failed: ${validation.errors.join("; ")}`
+        );
+        console.error("CSV Data validation errors:", validation.errors);
+        if (validation.warnings.length > 0) {
+          console.warn("CSV Data validation warnings:", validation.warnings);
+        }
+        return;
+      }
+
+      // Display warnings if any
+      let statusMessage = `✅ Loaded ${result.assemblies.length} assemblies, ${result.parts.length} parts, ${result.bom_items.length} BOM items`;
+
+      if (validation.warnings.length > 0) {
+        statusMessage += ` (${validation.warnings.length} warnings - check console)`;
+        console.warn("CSV Data validation warnings:", validation.warnings);
+      }
+
+      setTestStatus(statusMessage);
 
       // Auto-select first assembly if available
       if (result.assemblies.length > 0) {
@@ -32,39 +258,136 @@ export default function App() {
       }
     } catch (error) {
       console.error("Error loading data:", error);
-      setTestStatus(`❌ ERROR: ${String(error)}`);
+
+      // Provide more specific error messages
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("No such file")) {
+        setTestStatus(
+          "❌ CSV files not found. Please check the data directory path."
+        );
+      } else if (errorMessage.includes("permission")) {
+        setTestStatus("❌ Permission denied accessing CSV files.");
+      } else if (errorMessage.includes("Invalid")) {
+        setTestStatus(`❌ Data validation error: ${errorMessage}`);
+      } else {
+        setTestStatus(`❌ Failed to load CSV data: ${errorMessage}`);
+      }
+
+      // Clear any existing data on error
+      setData(null);
+      setSelectedAssembly("");
+      setBomResults(null);
+      setBuildability(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   const explodeBomForAssembly = async () => {
-    if (!data || !selectedAssembly) {
-      setTestStatus("❌ Please load data and select an assembly first");
+    // Validation checks
+    if (!data) {
+      setTestStatus("❌ No data loaded. Please load CSV data first.");
       return;
+    }
+
+    if (!selectedAssembly) {
+      setTestStatus(
+        "❌ No assembly selected. Please choose an assembly from the dropdown."
+      );
+      return;
+    }
+
+    // Validate the selected assembly exists
+    const assemblyExists = data.assemblies.some(
+      (a) => a.assembly_sku === selectedAssembly
+    );
+    if (!assemblyExists) {
+      setTestStatus(
+        "❌ Selected assembly not found in loaded data. Please select a different assembly."
+      );
+      return;
+    }
+
+    // Check if we have BOM data for analysis
+    if (!data.bom_items || data.bom_items.length === 0) {
+      setTestStatus("❌ No BOM data available for analysis.");
+      return;
+    }
+
+    // Check if we have stock data for buildability analysis
+    if (!data.stock || data.stock.length === 0) {
+      setTestStatus(
+        "⚠️ No stock data available - buildability analysis will be skipped."
+      );
     }
 
     setIsLoading(true);
     setTestStatus(`Analyzing ${selectedAssembly}...`);
+
+    // Clear previous results
+    setBomResults(null);
+    setBuildability(null);
+
     try {
       const indexed = indexBomByParent(data.bom_items);
+
+      // Check if the assembly has any BOM items
+      const assemblyBomItems = indexed.get(selectedAssembly);
+      if (!assemblyBomItems || assemblyBomItems.length === 0) {
+        setTestStatus(
+          `⚠️ No BOM items found for assembly ${selectedAssembly}. It may be a standalone part.`
+        );
+        return;
+      }
+
       const assemblySkus = new Set(data.assemblies.map((a) => a.assembly_sku));
       const isAssembly = (sku: SKU) => assemblySkus.has(sku);
 
       const results = explodeBom(selectedAssembly, indexed, isAssembly);
+
+      if (!results || Object.keys(results).length === 0) {
+        setTestStatus(
+          `❌ BOM explosion returned no results for ${selectedAssembly}`
+        );
+        return;
+      }
+
       setBomResults(results);
 
-      // Calculate buildability
-      const buildabilityResults = computeMaxBuildable(results, data.stock);
-      setBuildability(buildabilityResults);
+      // Only calculate buildability if we have stock data
+      if (data.stock && data.stock.length > 0) {
+        const buildabilityResults = computeMaxBuildable(results, data.stock);
+        setBuildability(buildabilityResults);
 
-      const partCount = Object.keys(results).length;
-      setTestStatus(
-        `✅ Analysis complete! Found ${partCount} parts, can build ${buildabilityResults.maxBuildable} assemblies`
-      );
+        const partCount = Object.keys(results).length;
+        setTestStatus(
+          `✅ Analysis complete! Found ${partCount} parts, can build ${buildabilityResults.maxBuildable} assemblies`
+        );
+      } else {
+        const partCount = Object.keys(results).length;
+        setTestStatus(
+          `✅ BOM explosion complete! Found ${partCount} parts (buildability analysis skipped - no stock data)`
+        );
+      }
     } catch (error) {
-      console.error("Error exploding BOM:", error);
-      setTestStatus(`❌ BOM Explosion Error: ${String(error)}`);
+      console.error("Error in analysis:", error);
+
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("Circular BOM")) {
+        setTestStatus(`❌ Circular dependency detected: ${errorMessage}`);
+      } else if (errorMessage.includes("undefined")) {
+        setTestStatus(
+          "❌ Data structure error - some required fields may be missing"
+        );
+      } else {
+        setTestStatus(`❌ Analysis failed: ${errorMessage}`);
+      }
+
+      // Clear results on error
+      setBomResults(null);
+      setBuildability(null);
     } finally {
       setIsLoading(false);
     }
