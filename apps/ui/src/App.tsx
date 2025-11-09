@@ -620,7 +620,9 @@ export default function App() {
                           fontSize: 13,
                         }}
                       >
-                        {qty.toFixed(4)}
+                        {qty % 1 === 0
+                          ? qty.toString()
+                          : qty.toFixed(2).replace(/\.?0+$/, "")}
                       </td>
                     </tr>
                   ))}
