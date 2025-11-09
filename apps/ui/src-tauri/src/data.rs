@@ -5,47 +5,32 @@ use std::path::Path;
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Assembly {
-    #[serde(rename = "assembly_sku")]
     pub assembly_sku: String,
-    #[serde(rename = "name")]
     pub name: String,
-    #[serde(rename = "uom")]
     pub uom: String,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct Part {
-    #[serde(rename = "part_sku")]
     pub part_sku: String,
-    #[serde(rename = "name")]
     pub name: String,
-    #[serde(rename = "uom")]
     pub uom: String,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct BomItem {
-    #[serde(rename = "parent_assembly_sku")]
     pub parent_assembly_sku: String,
-    #[serde(rename = "component_sku")]
     pub component_sku: String,
-    #[serde(rename = "qty_per")]
     pub qty_per: f64,
-    #[serde(rename = "scrap_rate")]
     pub scrap_rate: f64,
-    #[serde(rename = "yield_pct")]
     pub yield_pct: f64,
-    #[serde(rename = "is_phantom")]
     pub is_phantom: bool,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct StockRow {
-    #[serde(rename = "sku")]
     pub sku: String,
-    #[serde(rename = "on_hand_qty")]
     pub on_hand_qty: f64,
-    #[serde(rename = "reserved_qty")]
     pub reserved_qty: f64,
 }
 

@@ -6,9 +6,9 @@ import type { BomItem, RequirementsPerUnit, SKU } from "./types";
 export function indexBomByParent(bom: BomItem[]): Map<SKU, BomItem[]> {
   const map = new Map<SKU, BomItem[]>();
   for (const row of bom) {
-    const arr = map.get(row.parentAssemblySku) ?? [];
+    const arr = map.get(row.parent_assembly_sku) ?? [];
     arr.push(row);
-    map.set(row.parentAssemblySku, arr);
+    map.set(row.parent_assembly_sku, arr);
   }
   return map;
 }
@@ -47,19 +47,20 @@ export function explodeBom(
     visited.add(currentSku);
 
     for (const item of children) {
-      let effective = item.qtyPer;
+      let effective = item.qty_per;
       if (options.includeScrap) {
-        effective = effective * (1 + item.scrapRate);
+        effective = effective * (1 + item.scrap_rate);
       }
-      const yieldEff = Math.max(item.yieldPct, options.minYield);
+      const yieldEff = Math.max(item.yield_pct, options.minYield);
       effective = effective / yieldEff;
 
-      const hasChildren = (bomByParent.get(item.componentSku) ?? []).length > 0;
+      const hasChildren =
+        (bomByParent.get(item.component_sku) ?? []).length > 0;
 
-      if (item.isPhantom || hasChildren) {
-        dfs(item.componentSku, multiplier * effective);
+      if (item.is_phantom || hasChildren) {
+        dfs(item.component_sku, multiplier * effective);
       } else {
-        addReq(item.componentSku, multiplier * effective);
+        addReq(item.component_sku, multiplier * effective);
       }
     }
 

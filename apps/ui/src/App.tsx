@@ -92,18 +92,18 @@ export default function App() {
       // Check required fields in BOM items
       const invalidBomItems = data.bom_items.filter(
         (bom: any) =>
-          !bom.parent_sku ||
-          !bom.child_sku ||
-          typeof bom.parent_sku !== "string" ||
-          typeof bom.child_sku !== "string" ||
-          bom.parent_sku.trim() === "" ||
-          bom.child_sku.trim() === "" ||
-          typeof bom.quantity !== "number" ||
-          bom.quantity <= 0
+          !bom.parent_assembly_sku ||
+          !bom.component_sku ||
+          typeof bom.parent_assembly_sku !== "string" ||
+          typeof bom.component_sku !== "string" ||
+          bom.parent_assembly_sku.trim() === "" ||
+          bom.component_sku.trim() === "" ||
+          typeof bom.qty_per !== "number" ||
+          bom.qty_per <= 0
       );
       if (invalidBomItems.length > 0) {
         errors.push(
-          `${invalidBomItems.length} BOM items have missing or invalid parent_sku, child_sku, or quantity`
+          `${invalidBomItems.length} BOM items have missing or invalid parent_assembly_sku, component_sku, or qty_per`
         );
       }
 
@@ -116,7 +116,8 @@ export default function App() {
 
         const orphanedBomItems = data.bom_items.filter(
           (bom: any) =>
-            !allSkus.has(bom.parent_sku) || !allSkus.has(bom.child_sku)
+            !allSkus.has(bom.parent_assembly_sku) ||
+            !allSkus.has(bom.component_sku)
         );
 
         if (orphanedBomItems.length > 0) {
@@ -136,15 +137,15 @@ export default function App() {
       // Check required fields in stock
       const invalidStock = data.stock.filter(
         (s: any) =>
-          !s.part_sku ||
-          typeof s.part_sku !== "string" ||
-          s.part_sku.trim() === "" ||
-          typeof s.quantity !== "number" ||
-          s.quantity < 0
+          !s.sku ||
+          typeof s.sku !== "string" ||
+          s.sku.trim() === "" ||
+          typeof s.on_hand_qty !== "number" ||
+          s.on_hand_qty < 0
       );
       if (invalidStock.length > 0) {
         errors.push(
-          `${invalidStock.length} stock items have missing or invalid part_sku or quantity`
+          `${invalidStock.length} stock items have missing or invalid sku or on_hand_qty`
         );
       }
 
@@ -152,7 +153,7 @@ export default function App() {
       if (data.parts) {
         const partSkus = new Set(data.parts.map((p: any) => p.part_sku));
         const orphanedStock = data.stock.filter(
-          (s: any) => !partSkus.has(s.part_sku)
+          (s: any) => !partSkus.has(s.sku)
         );
 
         if (orphanedStock.length > 0) {
@@ -163,7 +164,7 @@ export default function App() {
       }
 
       // Check for duplicate stock entries
-      const stockSkus = data.stock.map((s: any) => s.part_sku);
+      const stockSkus = data.stock.map((s: any) => s.sku);
       const duplicateStockSkus = stockSkus.filter(
         (sku: any, index: number) => stockSkus.indexOf(sku) !== index
       );

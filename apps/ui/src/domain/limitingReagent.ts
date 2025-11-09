@@ -7,7 +7,7 @@ export function computeMaxBuildable(
 ): Buildability {
   const avail = new Map<SKU, number>();
   for (const s of stock) {
-    const a = s.onHandQty - (respectReservations ? s.reservedQty : 0);
+    const a = s.on_hand_qty - (respectReservations ? s.reserved_qty : 0);
     avail.set(s.sku, Math.max(0, a));
   }
 
