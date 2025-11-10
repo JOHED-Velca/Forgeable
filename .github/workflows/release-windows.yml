@@ -1,0 +1,41 @@
+name: build-windows-msi
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install frontend deps
+        working-directory: apps/ui
+        run: npm ci
+
+      - name: Build UI
+        working-directory: apps/ui
+        run: npm run build
+
+      - name: Install Tauri CLI
+        working-directory: apps/ui
+        run: npm i -D @tauri-apps/cli
+
+      - name: Build Tauri (MSI)
+        working-directory: apps/ui
+        run: npm run tauri:build
+
+      - name: Upload MSI
+        uses: actions/upload-artifact@v4
+        with:
+          name: forgeable-msi
+          path: apps/ui/src-tauri/target/release/bundle/msi/*.msi
