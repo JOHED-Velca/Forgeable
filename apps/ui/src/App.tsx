@@ -7,6 +7,9 @@ import { computeMaxBuildable } from "./domain/limitingReagent";
 export default function App() {
   const [testStatus, setTestStatus] = useState<string>("Ready to load data");
   const [data, setData] = useState<DataSnapshot | null>(null);
+  const [selectedFolder, setSelectedFolder] = useState<string>(
+    "C:\\Users\\johed\\OneDrive\\Documents\\Forgeable\\data"
+  );
   const [selectedAssembly, setSelectedAssembly] = useState<string>("");
   const [bomResults, setBomResults] = useState<Record<string, number> | null>(
     null
@@ -184,12 +187,35 @@ export default function App() {
     };
   };
 
+  const selectDataFolder = async () => {
+    try {
+      // For now, we'll use a simple prompt, but this should be replaced with proper Tauri dialog
+      const folderPath = window.prompt(
+        "Please enter the path to your CSV data folder:",
+        selectedFolder ||
+          "C:\\Users\\johed\\OneDrive\\Documents\\Forgeable\\data"
+      );
+
+      if (folderPath && folderPath.trim()) {
+        setSelectedFolder(folderPath.trim());
+        setTestStatus(`📁 Folder selected: ${folderPath.trim()}`);
+      }
+    } catch (error) {
+      console.error("Error selecting folder:", error);
+      setTestStatus("❌ Error selecting folder");
+    }
+  };
+
   const loadDataFromCsv = async () => {
+    if (!selectedFolder) {
+      setTestStatus("❌ Please select a data folder first");
+      return;
+    }
+
     setIsLoading(true);
     setTestStatus("Loading CSV data...");
     try {
-      const DATA_DIR = "/home/johed/Documents/CsvFiles/Forgeable/data";
-      const result = await loadData(DATA_DIR);
+      const result = await loadData(selectedFolder);
 
       // Validate loaded data
       if (!result) {
@@ -462,17 +488,41 @@ export default function App() {
         }}
       >
         <h3 style={{ margin: 0, marginBottom: 12 }}>1. Load CSV Data</h3>
+
+        <div style={{ marginBottom: 12 }}>
+          <button
+            onClick={selectDataFolder}
+            style={{
+              background: selectedFolder ? "#28a745" : "#6c757d",
+              color: "white",
+              border: "none",
+              padding: "8px 16px",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontSize: 14,
+              marginRight: 8,
+            }}
+          >
+            📁 {selectedFolder ? "Change Folder" : "Select Data Folder"}
+          </button>
+          {selectedFolder && (
+            <span style={{ fontSize: 12, color: "#666" }}>
+              📂 {selectedFolder}
+            </span>
+          )}
+        </div>
+
         <button
           onClick={loadDataFromCsv}
-          disabled={isLoading}
+          disabled={isLoading || !selectedFolder}
           style={{
             background: data ? "#28a745" : "#007bff",
             color: "white",
             border: "none",
             padding: "10px 20px",
             borderRadius: 6,
-            cursor: isLoading ? "not-allowed" : "pointer",
-            opacity: isLoading ? 0.6 : 1,
+            cursor: isLoading || !selectedFolder ? "not-allowed" : "pointer",
+            opacity: isLoading || !selectedFolder ? 0.6 : 1,
             fontSize: 14,
             fontWeight: 500,
           }}
