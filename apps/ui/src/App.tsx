@@ -11,6 +11,7 @@ export default function App() {
     "C:\\Users\\johed\\OneDrive\\Documents\\Forgeable\\data"
   );
   const [selectedAssembly, setSelectedAssembly] = useState<string>("");
+  const [panelQuantity, setPanelQuantity] = useState<number>(1);
   const [bomResults, setBomResults] = useState<Record<string, number> | null>(
     null
   );
@@ -380,7 +381,13 @@ export default function App() {
         return;
       }
 
-      setBomResults(results);
+      // Multiply results by panel quantity
+      const multipliedResults: Record<string, number> = {};
+      for (const [sku, qty] of Object.entries(results)) {
+        multipliedResults[sku] = qty * panelQuantity;
+      }
+
+      setBomResults(multipliedResults);
 
       // Only calculate buildability if we have stock data
       if (data.stock && data.stock.length > 0) {
@@ -577,6 +584,36 @@ export default function App() {
               ))}
             </select>
 
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <label style={{ fontSize: 14, fontWeight: 500 }}>Quantity:</label>
+              <input
+                type="number"
+                value={panelQuantity}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 1;
+                  if (value <= 0) {
+                    alert(
+                      "❌ Wrong input! Please enter a number greater than 0."
+                    );
+                    setPanelQuantity(1);
+                  } else {
+                    setPanelQuantity(value);
+                  }
+                }}
+                min="1"
+                style={{
+                  padding: "6px 8px",
+                  borderRadius: 4,
+                  border: "1px solid #ccc",
+                  fontSize: 14,
+                  width: 80,
+                  textAlign: "center",
+                }}
+                placeholder="1"
+              />
+              <span style={{ fontSize: 12, color: "#666" }}>panels</span>
+            </div>
+
             <button
               onClick={explodeBomForAssembly}
               disabled={!selectedAssembly || isLoading}
@@ -613,7 +650,7 @@ export default function App() {
             3. Parts Breakdown for Manufacturing
           </h3>
           <p style={{ margin: "0 0 12px 0", color: "#666", fontSize: 14 }}>
-            Parts required to build 1x {selectedAssembly}:
+            Parts required to build {panelQuantity}x {selectedAssembly}:
           </p>
 
           <div
