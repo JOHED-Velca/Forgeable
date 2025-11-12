@@ -933,7 +933,7 @@ export default function App() {
                             fontSize: 12,
                           }}
                         >
-                          {component.available.toFixed(2)}
+                          {Math.round(component.available)}
                         </td>
                         <td
                           style={{
@@ -951,7 +951,7 @@ export default function App() {
                             fontSize: 12,
                           }}
                         >
-                          {(component.reqPerUnit * panelQuantity).toFixed(2)}
+                          {Math.round(component.reqPerUnit * panelQuantity)}
                         </td>
                         <td
                           style={{
@@ -972,9 +972,11 @@ export default function App() {
                         >
                           {Math.max(
                             0,
-                            component.reqPerUnit * panelQuantity -
-                              component.available
-                          ).toFixed(2)}
+                            Math.round(
+                              component.reqPerUnit * panelQuantity -
+                                component.available
+                            )
+                          )}
                         </td>
                       </tr>
                     ))}
