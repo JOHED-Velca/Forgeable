@@ -391,8 +391,64 @@ export default function App() {
 
       // Only calculate buildability if we have stock data
       if (data.stock && data.stock.length > 0) {
-        const buildabilityResults = computeMaxBuildable(results, data.stock);
-        setBuildability(buildabilityResults);
+        // Calculate buildability for the requested quantity
+        const stockMap = new Map<string, number>();
+        for (const stockItem of data.stock) {
+          const available = stockItem.on_hand_qty - stockItem.reserved_qty;
+          stockMap.set(stockItem.sku, Math.max(0, available));
+        }
+
+        // Check which components are limiting for the requested quantity
+        const limitingComponents: Array<{
+          sku: string;
+          available: number;
+          reqPerUnit: number;
+          candidateBuilds: number;
+          needed: number;
+          shortage: number;
+        }> = [];
+
+        let canBuildRequested = true;
+        let maxPossible = Number.POSITIVE_INFINITY;
+
+        for (const [sku, totalNeeded] of Object.entries(multipliedResults)) {
+          const available = stockMap.get(sku) || 0;
+          const reqPerUnit = totalNeeded / panelQuantity; // Back-calculate per-unit requirement
+          const candidateBuilds = Math.floor(available / reqPerUnit);
+          const shortage = Math.max(0, totalNeeded - available);
+
+          if (shortage > 0) {
+            canBuildRequested = false;
+          }
+
+          limitingComponents.push({
+            sku,
+            available,
+            reqPerUnit,
+            candidateBuilds,
+            needed: totalNeeded,
+            shortage,
+          });
+
+          if (candidateBuilds < maxPossible) {
+            maxPossible = candidateBuilds;
+          }
+        }
+
+        if (!isFinite(maxPossible)) maxPossible = 0;
+
+        // Sort by most limiting first (those with shortages, then lowest candidate builds)
+        limitingComponents.sort((a, b) => {
+          if (a.shortage > 0 && b.shortage === 0) return -1;
+          if (a.shortage === 0 && b.shortage > 0) return 1;
+          if (a.shortage > 0 && b.shortage > 0) return b.shortage - a.shortage;
+          return a.candidateBuilds - b.candidateBuilds;
+        });
+
+        setBuildability({
+          maxBuildable: canBuildRequested ? panelQuantity : maxPossible,
+          limitingComponents: limitingComponents.slice(0, 10), // Show top 10 limiting components
+        });
 
         // Calculate buildability for all panel types
         const allPanelBuildability: string[] = [];
@@ -767,10 +823,24 @@ export default function App() {
                 fontSize: 16,
               }}
             >
-              {buildability.maxBuildable > 0
-                ? `✅ Can build ${buildability.maxBuildable} assemblies`
-                : "❌ Cannot build any assemblies"}
+              {buildability.maxBuildable >= panelQuantity
+                ? `✅ Can build requested ${panelQuantity} panels`
+                : `❌ Cannot build ${panelQuantity} panels - only ${buildability.maxBuildable} possible`}
             </h4>
+            <p
+              style={{
+                margin: "8px 0 0 0",
+                fontSize: 12,
+                color:
+                  buildability.maxBuildable >= panelQuantity
+                    ? "#155724"
+                    : "#721c24",
+              }}
+            >
+              {buildability.maxBuildable >= panelQuantity
+                ? "All required parts are available in sufficient quantities."
+                : `Missing parts prevent building the requested quantity. Maximum possible: ${buildability.maxBuildable} panels.`}
+            </p>
           </div>
 
           {buildability.limitingComponents.length > 0 && (
@@ -827,7 +897,17 @@ export default function App() {
                           fontSize: 12,
                         }}
                       >
-                        Possible Builds
+                        Total Needed
+                      </th>
+                      <th
+                        style={{
+                          padding: "8px 12px",
+                          textAlign: "right",
+                          borderBottom: "1px solid #dee2e6",
+                          fontSize: 12,
+                        }}
+                      >
+                        Shortage
                       </th>
                     </tr>
                   </thead>
@@ -869,14 +949,32 @@ export default function App() {
                             padding: "6px 12px",
                             textAlign: "right",
                             fontSize: 12,
-                            background:
-                              component.candidateBuilds ===
-                              buildability.maxBuildable
-                                ? "#fff3cd"
-                                : "transparent",
                           }}
                         >
-                          {component.candidateBuilds}
+                          {(component.reqPerUnit * panelQuantity).toFixed(2)}
+                        </td>
+                        <td
+                          style={{
+                            padding: "6px 12px",
+                            textAlign: "right",
+                            fontSize: 12,
+                            background:
+                              component.reqPerUnit * panelQuantity >
+                              component.available
+                                ? "#ffebee"
+                                : "transparent",
+                            color:
+                              component.reqPerUnit * panelQuantity >
+                              component.available
+                                ? "#c62828"
+                                : "inherit",
+                          }}
+                        >
+                          {Math.max(
+                            0,
+                            component.reqPerUnit * panelQuantity -
+                              component.available
+                          ).toFixed(2)}
                         </td>
                       </tr>
                     ))}
