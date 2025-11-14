@@ -1,6 +1,22 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { DataSnapshot } from "../domain/types";
+import type { DataSnapshot, BuildHistoryRecord } from "../domain/types";
 
 export async function loadData(dataDir: string): Promise<DataSnapshot> {
   return await invoke<DataSnapshot>("load_data", { dataDir });
+}
+
+export async function recordBuild(
+  dataDir: string,
+  buildRecord: Omit<BuildHistoryRecord, "id" | "timestamp">
+): Promise<DataSnapshot> {
+  return await invoke<DataSnapshot>("record_build", {
+    dataDir,
+    workOrder: buildRecord.work_order,
+    salesOrder: buildRecord.sales_order,
+    customer: buildRecord.customer,
+    assemblySku: buildRecord.assembly_sku,
+    quantityBuilt: buildRecord.quantity_built,
+    operator: buildRecord.operator || null,
+    notes: buildRecord.notes || null,
+  });
 }

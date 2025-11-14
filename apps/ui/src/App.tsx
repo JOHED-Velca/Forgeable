@@ -1,6 +1,11 @@
 import { useState } from "react";
-import { loadData } from "./services/native";
-import type { SKU, DataSnapshot, Buildability } from "./domain/types";
+import { loadData, recordBuild } from "./services/native";
+import type {
+  SKU,
+  DataSnapshot,
+  Buildability,
+  BuildHistoryRecord,
+} from "./domain/types";
 import { indexBomByParent, explodeBom } from "./domain/bomExplode";
 import { computeMaxBuildable } from "./domain/limitingReagent";
 
@@ -17,6 +22,15 @@ export default function App() {
   );
   const [buildability, setBuildability] = useState<Buildability | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Build tracking state
+  const [workOrder, setWorkOrder] = useState<string>("");
+  const [salesOrder, setSalesOrder] = useState<string>("");
+  const [customer, setCustomer] = useState<string>("");
+  const [builtQuantity, setBuiltQuantity] = useState<number>(1);
+  const [operator, setOperator] = useState<string>("");
+  const [buildNotes, setBuildNotes] = useState<string>("");
+  const [isRecordingBuild, setIsRecordingBuild] = useState(false);
 
   // CSV Data validation function
   const validateCsvData = (
@@ -515,6 +529,179 @@ export default function App() {
     }
   };
 
+  const handleRecordBuild = async () => {
+    // Validation checks
+    if (!data || !selectedFolder) {
+      setTestStatus("❌ No data loaded. Please load CSV data first.");
+      return;
+    }
+
+    if (!selectedAssembly) {
+      setTestStatus("❌ Please select a panel type to record build for.");
+      return;
+    }
+
+    if (!workOrder.trim()) {
+      setTestStatus("❌ Please enter a work order number.");
+      return;
+    }
+
+    if (!salesOrder.trim()) {
+      setTestStatus("❌ Please enter a sales order number.");
+      return;
+    }
+
+    if (!customer.trim()) {
+      setTestStatus("❌ Please enter a customer name.");
+      return;
+    }
+
+    if (builtQuantity <= 0) {
+      setTestStatus("❌ Please enter a valid quantity built.");
+      return;
+    }
+
+    // Check if we have sufficient stock before recording the build
+    if (bomResults && data.stock) {
+      const stockMap = new Map<string, number>();
+      for (const stockItem of data.stock) {
+        const available = stockItem.on_hand_qty - stockItem.reserved_qty;
+        stockMap.set(stockItem.sku, Math.max(0, available));
+      }
+
+      let hasInsufficientStock = false;
+      const shortages: string[] = [];
+
+      for (const [sku, qtyPerPanel] of Object.entries(bomResults)) {
+        const totalNeeded = (qtyPerPanel / panelQuantity) * builtQuantity;
+        const available = stockMap.get(sku) || 0;
+
+        if (totalNeeded > available) {
+          hasInsufficientStock = true;
+          shortages.push(
+            `${sku}: need ${totalNeeded.toFixed(2)}, have ${available.toFixed(
+              2
+            )}`
+          );
+        }
+      }
+
+      if (hasInsufficientStock) {
+        const confirmation = window.confirm(
+          `⚠️ Warning: Insufficient stock for this build:\n\n${shortages.join(
+            "\n"
+          )}\n\nProceed anyway? This will result in negative stock levels.`
+        );
+        if (!confirmation) {
+          return;
+        }
+      }
+    }
+
+    setIsRecordingBuild(true);
+    setTestStatus(
+      `Recording build: ${builtQuantity} units of ${selectedAssembly}...`
+    );
+
+    try {
+      const buildRecord = {
+        work_order: workOrder.trim(),
+        sales_order: salesOrder.trim(),
+        customer: customer.trim(),
+        assembly_sku: selectedAssembly,
+        quantity_built: builtQuantity,
+        operator: operator.trim() || undefined,
+        notes: buildNotes.trim() || undefined,
+      };
+
+      // Record the build and get updated data
+      const updatedData = await recordBuild(selectedFolder, buildRecord);
+
+      // Update the local state with new data
+      setData(updatedData);
+
+      // Clear the build form
+      setWorkOrder("");
+      setSalesOrder("");
+      setCustomer("");
+      setBuiltQuantity(1);
+      setOperator("");
+      setBuildNotes("");
+
+      // Recalculate BOM results with current panel quantity to reflect new stock levels
+      if (updatedData.stock && bomResults) {
+        // Re-run buildability analysis with updated stock
+        const stockMap = new Map<string, number>();
+        for (const stockItem of updatedData.stock) {
+          const available = stockItem.on_hand_qty - stockItem.reserved_qty;
+          stockMap.set(stockItem.sku, Math.max(0, available));
+        }
+
+        const limitingComponents: Array<{
+          sku: string;
+          available: number;
+          reqPerUnit: number;
+          candidateBuilds: number;
+          needed: number;
+          shortage: number;
+        }> = [];
+
+        let canBuildRequested = true;
+        let maxPossible = Number.POSITIVE_INFINITY;
+
+        for (const [sku, totalNeeded] of Object.entries(bomResults)) {
+          const available = stockMap.get(sku) || 0;
+          const reqPerUnit = totalNeeded / panelQuantity;
+          const candidateBuilds = Math.floor(available / reqPerUnit);
+          const shortage = Math.max(0, reqPerUnit * panelQuantity - available);
+
+          if (shortage > 0) {
+            canBuildRequested = false;
+          }
+
+          limitingComponents.push({
+            sku,
+            available,
+            reqPerUnit,
+            candidateBuilds,
+            needed: reqPerUnit * panelQuantity,
+            shortage,
+          });
+
+          if (candidateBuilds < maxPossible) {
+            maxPossible = candidateBuilds;
+          }
+        }
+
+        if (!isFinite(maxPossible)) maxPossible = 0;
+
+        // Sort by most limiting first
+        limitingComponents.sort((a, b) => {
+          if (a.shortage > 0 && b.shortage === 0) return -1;
+          if (a.shortage === 0 && b.shortage > 0) return 1;
+          if (a.shortage > 0 && b.shortage > 0) return b.shortage - a.shortage;
+          return a.candidateBuilds - b.candidateBuilds;
+        });
+
+        setBuildability({
+          maxBuildable: canBuildRequested ? panelQuantity : maxPossible,
+          limitingComponents: limitingComponents.slice(0, 10),
+        });
+      }
+
+      setTestStatus(
+        `✅ Build recorded successfully! ${builtQuantity} units of ${selectedAssembly} completed. Stock levels updated.`
+      );
+    } catch (error) {
+      console.error("Error recording build:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      setTestStatus(`❌ Failed to record build: ${errorMessage}`);
+    } finally {
+      setIsRecordingBuild(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -985,6 +1172,224 @@ export default function App() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Build Recording Section */}
+      {data && selectedAssembly && (
+        <div
+          style={{
+            background: "#f9f9f9",
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            padding: 20,
+            margin: "20px 0",
+          }}
+        >
+          <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
+            📝 Record Panel Build
+          </h3>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+              gap: "16px",
+              marginBottom: "16px",
+            }}
+          >
+            {/* Work Order */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "4px",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                }}
+              >
+                Work Order *
+              </label>
+              <input
+                type="text"
+                value={workOrder}
+                onChange={(e) => setWorkOrder(e.target.value)}
+                placeholder="e.g., WO#23898"
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #ddd",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                }}
+              />
+            </div>
+
+            {/* Sales Order */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "4px",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                }}
+              >
+                Sales Order *
+              </label>
+              <input
+                type="text"
+                value={salesOrder}
+                onChange={(e) => setSalesOrder(e.target.value)}
+                placeholder="e.g., SO#23709"
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #ddd",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                }}
+              />
+            </div>
+
+            {/* Customer */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "4px",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                }}
+              >
+                Customer *
+              </label>
+              <input
+                type="text"
+                value={customer}
+                onChange={(e) => setCustomer(e.target.value)}
+                placeholder="e.g., TDH, BEACON, City of Toronto"
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #ddd",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                }}
+              />
+            </div>
+
+            {/* Quantity Built */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "4px",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                }}
+              >
+                Quantity Built *
+              </label>
+              <input
+                type="number"
+                value={builtQuantity}
+                onChange={(e) =>
+                  setBuiltQuantity(parseInt(e.target.value) || 1)
+                }
+                min="1"
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #ddd",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                }}
+              />
+            </div>
+
+            {/* Operator (Optional) */}
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "4px",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                }}
+              >
+                Operator
+              </label>
+              <input
+                type="text"
+                value={operator}
+                onChange={(e) => setOperator(e.target.value)}
+                placeholder="Optional"
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #ddd",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div style={{ marginBottom: "16px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "4px",
+                fontWeight: "600",
+                fontSize: "14px",
+              }}
+            >
+              Notes
+            </label>
+            <textarea
+              value={buildNotes}
+              onChange={(e) => setBuildNotes(e.target.value)}
+              placeholder="Optional build notes..."
+              rows={3}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                border: "1px solid #ddd",
+                borderRadius: "4px",
+                fontSize: "14px",
+                resize: "vertical",
+              }}
+            />
+          </div>
+
+          {/* Record Button */}
+          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            <button
+              onClick={handleRecordBuild}
+              disabled={isRecordingBuild}
+              style={{
+                background: isRecordingBuild ? "#ccc" : "#28a745",
+                color: "white",
+                border: "none",
+                borderRadius: 6,
+                padding: "10px 20px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: isRecordingBuild ? "not-allowed" : "pointer",
+                transition: "background-color 0.2s",
+              }}
+            >
+              {isRecordingBuild
+                ? "Recording..."
+                : `Record Build: ${builtQuantity} × ${selectedAssembly}`}
+            </button>
+
+            <span style={{ fontSize: "12px", color: "#666" }}>
+              This will update inventory levels automatically
+            </span>
+          </div>
         </div>
       )}
     </div>
