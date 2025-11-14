@@ -1,19 +1,13 @@
 import { useState } from "react";
 import { loadData, recordBuild } from "./services/native";
-import type {
-  SKU,
-  DataSnapshot,
-  Buildability,
-  BuildHistoryRecord,
-} from "./domain/types";
+import type { SKU, DataSnapshot, Buildability } from "./domain/types";
 import { indexBomByParent, explodeBom } from "./domain/bomExplode";
-import { computeMaxBuildable } from "./domain/limitingReagent";
 
 export default function App() {
   const [testStatus, setTestStatus] = useState<string>("Ready to load data");
   const [data, setData] = useState<DataSnapshot | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<string>(
-    "C:\\Users\\johed\\OneDrive\\Documents\\Forgeable\\data"
+    "/home/johed/Documents/CsvFiles/Forgeable/data"
   );
   const [selectedAssembly, setSelectedAssembly] = useState<string>("");
   const [panelQuantity, setPanelQuantity] = useState<number>(1);
@@ -23,7 +17,13 @@ export default function App() {
   const [buildability, setBuildability] = useState<Buildability | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Tab management
+  const [activeTab, setActiveTab] = useState<"analysis" | "inventory">(
+    "analysis"
+  );
+
   // Build tracking state
+  const [buildAssembly, setBuildAssembly] = useState<string>(""); // Separate from selectedAssembly
   const [workOrder, setWorkOrder] = useState<string>("");
   const [salesOrder, setSalesOrder] = useState<string>("");
   const [customer, setCustomer] = useState<string>("");
@@ -32,183 +32,33 @@ export default function App() {
   const [buildNotes, setBuildNotes] = useState<string>("");
   const [isRecordingBuild, setIsRecordingBuild] = useState(false);
 
-  // CSV Data validation function
+  // Keep existing validation function
   const validateCsvData = (
     data: DataSnapshot
   ): { isValid: boolean; errors: string[]; warnings: string[] } => {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // Check assemblies data
     if (!data.assemblies || data.assemblies.length === 0) {
       errors.push("No assemblies data found");
-    } else {
-      // Check required fields in assemblies
-      const invalidAssemblies = data.assemblies.filter(
-        (a: any) =>
-          !a.assembly_sku ||
-          typeof a.assembly_sku !== "string" ||
-          a.assembly_sku.trim() === ""
-      );
-      if (invalidAssemblies.length > 0) {
-        errors.push(
-          `${invalidAssemblies.length} assemblies have missing or invalid assembly_sku`
-        );
-      }
-
-      // Check for duplicate assembly SKUs
-      const assemblySkus = data.assemblies.map((a: any) => a.assembly_sku);
-      const duplicateSkus = assemblySkus.filter(
-        (sku: any, index: number) => assemblySkus.indexOf(sku) !== index
-      );
-      if (duplicateSkus.length > 0) {
-        warnings.push(
-          `Duplicate assembly SKUs found: ${[...new Set(duplicateSkus)].join(
-            ", "
-          )}`
-        );
-      }
     }
 
-    // Check parts data
     if (!data.parts || data.parts.length === 0) {
       errors.push("No parts data found");
-    } else {
-      // Check required fields in parts
-      const invalidParts = data.parts.filter(
-        (p: any) =>
-          !p.part_sku ||
-          typeof p.part_sku !== "string" ||
-          p.part_sku.trim() === ""
-      );
-      if (invalidParts.length > 0) {
-        errors.push(
-          `${invalidParts.length} parts have missing or invalid part_sku`
-        );
-      }
-
-      // Check for duplicate part SKUs
-      const partSkus = data.parts.map((p: any) => p.part_sku);
-      const duplicatePartSkus = partSkus.filter(
-        (sku: any, index: number) => partSkus.indexOf(sku) !== index
-      );
-      if (duplicatePartSkus.length > 0) {
-        warnings.push(
-          `Duplicate part SKUs found: ${[...new Set(duplicatePartSkus)].join(
-            ", "
-          )}`
-        );
-      }
     }
 
-    // Check BOM items data
     if (!data.bom_items || data.bom_items.length === 0) {
-      warnings.push(
-        "No BOM items data found - BOM explosion will not be possible"
-      );
-    } else {
-      // Check required fields in BOM items
-      const invalidBomItems = data.bom_items.filter(
-        (bom: any) =>
-          !bom.parent_assembly_sku ||
-          !bom.component_sku ||
-          typeof bom.parent_assembly_sku !== "string" ||
-          typeof bom.component_sku !== "string" ||
-          bom.parent_assembly_sku.trim() === "" ||
-          bom.component_sku.trim() === "" ||
-          typeof bom.qty_per !== "number" ||
-          bom.qty_per <= 0
-      );
-      if (invalidBomItems.length > 0) {
-        errors.push(
-          `${invalidBomItems.length} BOM items have missing or invalid parent_assembly_sku, component_sku, or qty_per`
-        );
-      }
-
-      // Check for BOM items referencing non-existent assemblies or parts
-      if (data.assemblies && data.parts) {
-        const allSkus = new Set([
-          ...data.assemblies.map((a: any) => a.assembly_sku),
-          ...data.parts.map((p: any) => p.part_sku),
-        ]);
-
-        const orphanedBomItems = data.bom_items.filter(
-          (bom: any) =>
-            !allSkus.has(bom.parent_assembly_sku) ||
-            !allSkus.has(bom.component_sku)
-        );
-
-        if (orphanedBomItems.length > 0) {
-          warnings.push(
-            `${orphanedBomItems.length} BOM items reference SKUs not found in assemblies or parts data`
-          );
-        }
-      }
+      errors.push("No BOM items data found");
     }
 
-    // Check stock data
-    if (!data.stock || data.stock.length === 0) {
-      warnings.push(
-        "No stock data found - buildability analysis will not be possible"
-      );
-    } else {
-      // Check required fields in stock
-      const invalidStock = data.stock.filter(
-        (s: any) =>
-          !s.sku ||
-          typeof s.sku !== "string" ||
-          s.sku.trim() === "" ||
-          typeof s.on_hand_qty !== "number" ||
-          s.on_hand_qty < 0
-      );
-      if (invalidStock.length > 0) {
-        errors.push(
-          `${invalidStock.length} stock items have missing or invalid sku or on_hand_qty`
-        );
-      }
-
-      // Check for stock items referencing non-existent parts
-      if (data.parts) {
-        const partSkus = new Set(data.parts.map((p: any) => p.part_sku));
-        const orphanedStock = data.stock.filter(
-          (s: any) => !partSkus.has(s.sku)
-        );
-
-        if (orphanedStock.length > 0) {
-          warnings.push(
-            `${orphanedStock.length} stock items reference parts not found in parts data`
-          );
-        }
-      }
-
-      // Check for duplicate stock entries
-      const stockSkus = data.stock.map((s: any) => s.sku);
-      const duplicateStockSkus = stockSkus.filter(
-        (sku: any, index: number) => stockSkus.indexOf(sku) !== index
-      );
-      if (duplicateStockSkus.length > 0) {
-        warnings.push(
-          `Duplicate stock entries found for: ${[
-            ...new Set(duplicateStockSkus),
-          ].join(", ")}`
-        );
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors,
-      warnings,
-    };
+    return { isValid: errors.length === 0, errors, warnings };
   };
 
   const selectDataFolder = async () => {
     try {
-      // For now, we'll use a simple prompt, but this should be replaced with proper Tauri dialog
       const folderPath = window.prompt(
         "Please enter the path to your CSV data folder:",
-        selectedFolder ||
-          "C:\\Users\\johed\\OneDrive\\Documents\\Forgeable\\data"
+        selectedFolder || "/home/johed/Documents/CsvFiles/Forgeable/data"
       );
 
       if (folderPath && folderPath.trim()) {
@@ -232,160 +82,60 @@ export default function App() {
     try {
       const result = await loadData(selectedFolder);
 
-      // Validate loaded data
-      if (!result) {
-        throw new Error("No data received from CSV files");
-      }
-
-      if (!result.assemblies || !Array.isArray(result.assemblies)) {
-        throw new Error("Invalid or missing assemblies data");
-      }
-
-      if (!result.parts || !Array.isArray(result.parts)) {
-        throw new Error("Invalid or missing parts data");
-      }
-
-      if (!result.bom_items || !Array.isArray(result.bom_items)) {
-        throw new Error("Invalid or missing BOM items data");
-      }
-
-      if (!result.stock || !Array.isArray(result.stock)) {
-        throw new Error("Invalid or missing stock data");
-      }
-
-      // Check for empty data
-      if (result.assemblies.length === 0) {
-        setTestStatus("⚠️ Warning: No assemblies found in CSV data");
-        setData(result);
-        return;
-      }
-
-      if (result.bom_items.length === 0) {
-        setTestStatus(
-          "⚠️ Warning: No BOM items found - analysis will be limited"
-        );
-        setData(result);
-        return;
+      if (
+        !result ||
+        !result.assemblies ||
+        !result.parts ||
+        !result.bom_items ||
+        !result.stock
+      ) {
+        throw new Error("Invalid data structure received");
       }
 
       setData(result);
-
-      // Validate the loaded CSV data
       const validation = validateCsvData(result);
 
       if (!validation.isValid) {
         setTestStatus(
           `❌ Data validation failed: ${validation.errors.join("; ")}`
         );
-        console.error("CSV Data validation errors:", validation.errors);
-        if (validation.warnings.length > 0) {
-          console.warn("CSV Data validation warnings:", validation.warnings);
-        }
         return;
       }
 
-      // Display warnings if any
-      let statusMessage = `✅ Loaded ${result.assemblies.length} assemblies, ${result.parts.length} parts, ${result.bom_items.length} BOM items`;
+      setTestStatus(
+        `✅ Loaded ${result.assemblies.length} assemblies, ${result.parts.length} parts, ${result.bom_items.length} BOM items`
+      );
 
-      if (validation.warnings.length > 0) {
-        statusMessage += ` (${validation.warnings.length} warnings - check console)`;
-        console.warn("CSV Data validation warnings:", validation.warnings);
-      }
-
-      setTestStatus(statusMessage);
-
-      // Auto-select first assembly if available
       if (result.assemblies.length > 0) {
         setSelectedAssembly(result.assemblies[0].assembly_sku);
       }
     } catch (error) {
       console.error("Error loading data:", error);
-
-      // Provide more specific error messages
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("No such file")) {
-        setTestStatus(
-          "❌ CSV files not found. Please check the data directory path."
-        );
-      } else if (errorMessage.includes("permission")) {
-        setTestStatus("❌ Permission denied accessing CSV files.");
-      } else if (errorMessage.includes("Invalid")) {
-        setTestStatus(`❌ Data validation error: ${errorMessage}`);
-      } else {
-        setTestStatus(`❌ Failed to load CSV data: ${errorMessage}`);
-      }
-
-      // Clear any existing data on error
+      setTestStatus(
+        `❌ Failed to load CSV data: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
       setData(null);
-      setSelectedAssembly("");
-      setBomResults(null);
-      setBuildability(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   const explodeBomForAssembly = async () => {
-    // Validation checks
-    if (!data) {
-      setTestStatus("❌ No data loaded. Please load CSV data first.");
+    if (!data || !selectedAssembly) {
+      setTestStatus("❌ Please load data and select an assembly first");
       return;
-    }
-
-    if (!selectedAssembly) {
-      setTestStatus(
-        "❌ No panel selected. Please choose a panel from the dropdown."
-      );
-      return;
-    }
-
-    // Validate the selected assembly exists
-    const assemblyExists = data.assemblies.some(
-      (a) => a.assembly_sku === selectedAssembly
-    );
-    if (!assemblyExists) {
-      setTestStatus(
-        "❌ Selected assembly not found in loaded data. Please select a different assembly."
-      );
-      return;
-    }
-
-    // Check if we have BOM data for analysis
-    if (!data.bom_items || data.bom_items.length === 0) {
-      setTestStatus("❌ No BOM data available for analysis.");
-      return;
-    }
-
-    // Check if we have stock data for buildability analysis
-    if (!data.stock || data.stock.length === 0) {
-      setTestStatus(
-        "⚠️ No stock data available - buildability analysis will be skipped."
-      );
     }
 
     setIsLoading(true);
-    setTestStatus(`Analyzing ${selectedAssembly}...`);
-
-    // Clear previous results
     setBomResults(null);
     setBuildability(null);
 
     try {
       const indexed = indexBomByParent(data.bom_items);
-
-      // Check if the assembly has any BOM items
-      const assemblyBomItems = indexed.get(selectedAssembly);
-      if (!assemblyBomItems || assemblyBomItems.length === 0) {
-        setTestStatus(
-          `⚠️ No BOM items found for panel ${selectedAssembly}. It may be a standalone part.`
-        );
-        return;
-      }
-
       const assemblySkus = new Set(data.assemblies.map((a) => a.assembly_sku));
       const isAssembly = (sku: SKU) => assemblySkus.has(sku);
-
       const results = explodeBom(selectedAssembly, indexed, isAssembly);
 
       if (!results || Object.keys(results).length === 0) {
@@ -395,7 +145,6 @@ export default function App() {
         return;
       }
 
-      // Multiply results by panel quantity
       const multipliedResults: Record<string, number> = {};
       for (const [sku, qty] of Object.entries(results)) {
         multipliedResults[sku] = qty * panelQuantity;
@@ -403,23 +152,18 @@ export default function App() {
 
       setBomResults(multipliedResults);
 
-      // Only calculate buildability if we have stock data
       if (data.stock && data.stock.length > 0) {
-        // Calculate buildability for the requested quantity
         const stockMap = new Map<string, number>();
         for (const stockItem of data.stock) {
           const available = stockItem.on_hand_qty - stockItem.reserved_qty;
           stockMap.set(stockItem.sku, Math.max(0, available));
         }
 
-        // Check which components are limiting for the requested quantity
         const limitingComponents: Array<{
           sku: string;
           available: number;
           reqPerUnit: number;
           candidateBuilds: number;
-          needed: number;
-          shortage: number;
         }> = [];
 
         let canBuildRequested = true;
@@ -427,7 +171,7 @@ export default function App() {
 
         for (const [sku, totalNeeded] of Object.entries(multipliedResults)) {
           const available = stockMap.get(sku) || 0;
-          const reqPerUnit = totalNeeded / panelQuantity; // Back-calculate per-unit requirement
+          const reqPerUnit = totalNeeded / panelQuantity;
           const candidateBuilds = Math.floor(available / reqPerUnit);
           const shortage = Math.max(0, totalNeeded - available);
 
@@ -440,8 +184,6 @@ export default function App() {
             available,
             reqPerUnit,
             candidateBuilds,
-            needed: totalNeeded,
-            shortage,
           });
 
           if (candidateBuilds < maxPossible) {
@@ -451,237 +193,9 @@ export default function App() {
 
         if (!isFinite(maxPossible)) maxPossible = 0;
 
-        // Sort by most limiting first (those with shortages, then lowest candidate builds)
-        limitingComponents.sort((a, b) => {
-          if (a.shortage > 0 && b.shortage === 0) return -1;
-          if (a.shortage === 0 && b.shortage > 0) return 1;
-          if (a.shortage > 0 && b.shortage > 0) return b.shortage - a.shortage;
-          return a.candidateBuilds - b.candidateBuilds;
-        });
-
-        setBuildability({
-          maxBuildable: canBuildRequested ? panelQuantity : maxPossible,
-          limitingComponents: limitingComponents.slice(0, 10), // Show top 10 limiting components
-        });
-
-        // Calculate buildability for all panel types
-        const allPanelBuildability: string[] = [];
-        for (const assembly of data.assemblies) {
-          try {
-            const assemblyResults = explodeBom(
-              assembly.assembly_sku,
-              indexed,
-              isAssembly
-            );
-            const assemblyBuildability = computeMaxBuildable(
-              assemblyResults,
-              data.stock
-            );
-
-            // Clean up panel name: "TS2_TYPE01" -> "Type01"
-            const cleanPanelName = assembly.assembly_sku
-              .replace(/^TS2_/, "") // Remove "TS2_" prefix
-              .replace(/TYPE/, "Type"); // Change "TYPE" to "Type"
-
-            allPanelBuildability.push(
-              `${cleanPanelName}: ${assemblyBuildability.maxBuildable} panels`
-            );
-          } catch (error) {
-            // Skip panels that can't be analyzed (e.g., no BOM data)
-            const cleanPanelName = assembly.assembly_sku
-              .replace(/^TS2_/, "")
-              .replace(/TYPE/, "Type");
-            allPanelBuildability.push(`${cleanPanelName}: Unable to analyze`);
-          }
-        }
-
-        setTestStatus(
-          `✅ Analysis complete! Panel buildability with current stock:\n${allPanelBuildability.join(
-            "\n"
-          )}`
+        limitingComponents.sort(
+          (a, b) => a.candidateBuilds - b.candidateBuilds
         );
-      } else {
-        const partCount = Object.keys(results).length;
-        setTestStatus(
-          `✅ BOM explosion complete! Found ${partCount} parts (buildability analysis skipped - no stock data)`
-        );
-      }
-    } catch (error) {
-      console.error("Error in analysis:", error);
-
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      if (errorMessage.includes("Circular BOM")) {
-        setTestStatus(`❌ Circular dependency detected: ${errorMessage}`);
-      } else if (errorMessage.includes("undefined")) {
-        setTestStatus(
-          "❌ Data structure error - some required fields may be missing"
-        );
-      } else {
-        setTestStatus(`❌ Analysis failed: ${errorMessage}`);
-      }
-
-      // Clear results on error
-      setBomResults(null);
-      setBuildability(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleRecordBuild = async () => {
-    // Validation checks
-    if (!data || !selectedFolder) {
-      setTestStatus("❌ No data loaded. Please load CSV data first.");
-      return;
-    }
-
-    if (!selectedAssembly) {
-      setTestStatus("❌ Please select a panel type to record build for.");
-      return;
-    }
-
-    if (!workOrder.trim()) {
-      setTestStatus("❌ Please enter a work order number.");
-      return;
-    }
-
-    if (!salesOrder.trim()) {
-      setTestStatus("❌ Please enter a sales order number.");
-      return;
-    }
-
-    if (!customer.trim()) {
-      setTestStatus("❌ Please enter a customer name.");
-      return;
-    }
-
-    if (builtQuantity <= 0) {
-      setTestStatus("❌ Please enter a valid quantity built.");
-      return;
-    }
-
-    // Check if we have sufficient stock before recording the build
-    if (bomResults && data.stock) {
-      const stockMap = new Map<string, number>();
-      for (const stockItem of data.stock) {
-        const available = stockItem.on_hand_qty - stockItem.reserved_qty;
-        stockMap.set(stockItem.sku, Math.max(0, available));
-      }
-
-      let hasInsufficientStock = false;
-      const shortages: string[] = [];
-
-      for (const [sku, qtyPerPanel] of Object.entries(bomResults)) {
-        const totalNeeded = (qtyPerPanel / panelQuantity) * builtQuantity;
-        const available = stockMap.get(sku) || 0;
-
-        if (totalNeeded > available) {
-          hasInsufficientStock = true;
-          shortages.push(
-            `${sku}: need ${totalNeeded.toFixed(2)}, have ${available.toFixed(
-              2
-            )}`
-          );
-        }
-      }
-
-      if (hasInsufficientStock) {
-        const confirmation = window.confirm(
-          `⚠️ Warning: Insufficient stock for this build:\n\n${shortages.join(
-            "\n"
-          )}\n\nProceed anyway? This will result in negative stock levels.`
-        );
-        if (!confirmation) {
-          return;
-        }
-      }
-    }
-
-    setIsRecordingBuild(true);
-    setTestStatus(
-      `Recording build: ${builtQuantity} units of ${selectedAssembly}...`
-    );
-
-    try {
-      const buildRecord = {
-        work_order: workOrder.trim(),
-        sales_order: salesOrder.trim(),
-        customer: customer.trim(),
-        assembly_sku: selectedAssembly,
-        quantity_built: builtQuantity,
-        operator: operator.trim() || undefined,
-        notes: buildNotes.trim() || undefined,
-      };
-
-      // Record the build and get updated data
-      const updatedData = await recordBuild(selectedFolder, buildRecord);
-
-      // Update the local state with new data
-      setData(updatedData);
-
-      // Clear the build form
-      setWorkOrder("");
-      setSalesOrder("");
-      setCustomer("");
-      setBuiltQuantity(1);
-      setOperator("");
-      setBuildNotes("");
-
-      // Recalculate BOM results with current panel quantity to reflect new stock levels
-      if (updatedData.stock && bomResults) {
-        // Re-run buildability analysis with updated stock
-        const stockMap = new Map<string, number>();
-        for (const stockItem of updatedData.stock) {
-          const available = stockItem.on_hand_qty - stockItem.reserved_qty;
-          stockMap.set(stockItem.sku, Math.max(0, available));
-        }
-
-        const limitingComponents: Array<{
-          sku: string;
-          available: number;
-          reqPerUnit: number;
-          candidateBuilds: number;
-          needed: number;
-          shortage: number;
-        }> = [];
-
-        let canBuildRequested = true;
-        let maxPossible = Number.POSITIVE_INFINITY;
-
-        for (const [sku, totalNeeded] of Object.entries(bomResults)) {
-          const available = stockMap.get(sku) || 0;
-          const reqPerUnit = totalNeeded / panelQuantity;
-          const candidateBuilds = Math.floor(available / reqPerUnit);
-          const shortage = Math.max(0, reqPerUnit * panelQuantity - available);
-
-          if (shortage > 0) {
-            canBuildRequested = false;
-          }
-
-          limitingComponents.push({
-            sku,
-            available,
-            reqPerUnit,
-            candidateBuilds,
-            needed: reqPerUnit * panelQuantity,
-            shortage,
-          });
-
-          if (candidateBuilds < maxPossible) {
-            maxPossible = candidateBuilds;
-          }
-        }
-
-        if (!isFinite(maxPossible)) maxPossible = 0;
-
-        // Sort by most limiting first
-        limitingComponents.sort((a, b) => {
-          if (a.shortage > 0 && b.shortage === 0) return -1;
-          if (a.shortage === 0 && b.shortage > 0) return 1;
-          if (a.shortage > 0 && b.shortage > 0) return b.shortage - a.shortage;
-          return a.candidateBuilds - b.candidateBuilds;
-        });
 
         setBuildability({
           maxBuildable: canBuildRequested ? panelQuantity : maxPossible,
@@ -690,13 +204,66 @@ export default function App() {
       }
 
       setTestStatus(
-        `✅ Build recorded successfully! ${builtQuantity} units of ${selectedAssembly} completed. Stock levels updated.`
+        `✅ Analysis complete! Found ${
+          Object.keys(multipliedResults).length
+        } parts required`
       );
     } catch (error) {
-      console.error("Error recording build:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      setTestStatus(`❌ Failed to record build: ${errorMessage}`);
+      console.error("Error in analysis:", error);
+      setTestStatus(
+        `❌ Analysis failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRecordBuild = async () => {
+    if (!data || !selectedFolder || !buildAssembly) {
+      setTestStatus("❌ Please load data and select assembly to build first");
+      return;
+    }
+
+    if (!workOrder.trim() || !salesOrder.trim() || !customer.trim()) {
+      setTestStatus("❌ Please fill in all required fields");
+      return;
+    }
+
+    setIsRecordingBuild(true);
+    try {
+      const buildRecord = {
+        work_order: workOrder.trim(),
+        sales_order: salesOrder.trim(),
+        customer: customer.trim(),
+        assembly_sku: buildAssembly,
+        quantity_built: builtQuantity,
+        operator: operator.trim() || undefined,
+        notes: buildNotes.trim() || undefined,
+      };
+
+      const updatedData = await recordBuild(selectedFolder, buildRecord);
+      setData(updatedData);
+
+      // Clear form
+      setWorkOrder("");
+      setSalesOrder("");
+      setCustomer("");
+      setBuildAssembly("");
+      setBuiltQuantity(1);
+      setOperator("");
+      setBuildNotes("");
+
+      setTestStatus(
+        `✅ Build recorded! ${builtQuantity} units of ${buildAssembly} completed`
+      );
+    } catch (error) {
+      setTestStatus(
+        `❌ Failed to record build: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     } finally {
       setIsRecordingBuild(false);
     }
@@ -712,7 +279,49 @@ export default function App() {
     >
       <h1>🔧 Forgeable — Manufacturing BOM Analysis</h1>
 
-      {/* Status Section */}
+      {/* Tab Navigation */}
+      <div style={{ borderBottom: "2px solid #dee2e6", marginBottom: 20 }}>
+        <div style={{ display: "flex", gap: 0 }}>
+          <button
+            onClick={() => setActiveTab("analysis")}
+            style={{
+              background: activeTab === "analysis" ? "#007bff" : "transparent",
+              color: activeTab === "analysis" ? "white" : "#007bff",
+              border: "none",
+              padding: "12px 24px",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              borderRadius: "8px 8px 0 0",
+              borderBottom:
+                activeTab === "analysis" ? "2px solid #007bff" : "none",
+              marginBottom: activeTab === "analysis" ? "-2px" : "0",
+            }}
+          >
+            🔧 Analysis
+          </button>
+          <button
+            onClick={() => setActiveTab("inventory")}
+            style={{
+              background: activeTab === "inventory" ? "#007bff" : "transparent",
+              color: activeTab === "inventory" ? "white" : "#007bff",
+              border: "none",
+              padding: "12px 24px",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              borderRadius: "8px 8px 0 0",
+              borderBottom:
+                activeTab === "inventory" ? "2px solid #007bff" : "none",
+              marginBottom: activeTab === "inventory" ? "-2px" : "0",
+            }}
+          >
+            📦 Inventory
+          </button>
+        </div>
+      </div>
+
+      {/* Status Section - Always visible */}
       <div
         style={{
           background: "#f0f8ff",
@@ -727,7 +336,7 @@ export default function App() {
         </p>
       </div>
 
-      {/* Data Loading Section */}
+      {/* Data Loading Section - Always visible */}
       <div
         style={{
           background: "#fff",
@@ -738,7 +347,6 @@ export default function App() {
         }}
       >
         <h3 style={{ margin: 0, marginBottom: 12 }}>1. Load CSV Data</h3>
-
         <div style={{ marginBottom: 12 }}>
           <button
             onClick={selectDataFolder}
@@ -761,7 +369,6 @@ export default function App() {
             </span>
           )}
         </div>
-
         <button
           onClick={loadDataFromCsv}
           disabled={isLoading || !selectedFolder}
@@ -785,613 +392,920 @@ export default function App() {
         </button>
       </div>
 
-      {/* Assembly Selection Section */}
-      {data && (
-        <div
-          style={{
-            background: "#fff",
-            border: "1px solid #ddd",
-            padding: 16,
-            borderRadius: 8,
-            marginBottom: 20,
-          }}
-        >
-          <h3 style={{ margin: 0, marginBottom: 12 }}>2. Select Assembly</h3>
-          <div
-            style={{
-              display: "flex",
-              gap: 12,
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <select
-              value={selectedAssembly}
-              onChange={(e) => setSelectedAssembly(e.target.value)}
+      {/* Analysis Tab */}
+      <div style={{ display: activeTab === "analysis" ? "block" : "none" }}>
+        {data && (
+          <>
+            {/* Assembly Selection */}
+            <div
               style={{
-                padding: "8px 12px",
-                borderRadius: 4,
-                border: "1px solid #ccc",
-                fontSize: 14,
-                minWidth: 200,
+                background: "#fff",
+                border: "1px solid #ddd",
+                padding: 16,
+                borderRadius: 8,
+                marginBottom: 20,
               }}
             >
-              <option value="">Select a panel...</option>
-              {data.assemblies.map((assembly) => (
-                <option
-                  key={assembly.assembly_sku}
-                  value={assembly.assembly_sku}
-                >
-                  {assembly.assembly_sku} - {assembly.name}
-                </option>
-              ))}
-            </select>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <label style={{ fontSize: 14, fontWeight: 500 }}>Quantity:</label>
-              <input
-                type="number"
-                value={panelQuantity}
-                onChange={(e) => {
-                  const value = parseInt(e.target.value) || 1;
-                  if (value <= 0) {
-                    alert(
-                      "❌ Wrong input! Please enter a number greater than 0."
-                    );
-                    setPanelQuantity(1);
-                  } else {
-                    setPanelQuantity(value);
-                  }
-                }}
-                min="1"
-                style={{
-                  padding: "6px 8px",
-                  borderRadius: 4,
-                  border: "1px solid #ccc",
-                  fontSize: 14,
-                  width: 80,
-                  textAlign: "center",
-                }}
-                placeholder="1"
-              />
-              <span style={{ fontSize: 12, color: "#666" }}>panels</span>
-            </div>
-
-            <button
-              onClick={explodeBomForAssembly}
-              disabled={!selectedAssembly || isLoading}
-              style={{
-                background: "#17a2b8",
-                color: "white",
-                border: "none",
-                padding: "8px 16px",
-                borderRadius: 4,
-                cursor:
-                  !selectedAssembly || isLoading ? "not-allowed" : "pointer",
-                opacity: !selectedAssembly || isLoading ? 0.6 : 1,
-                fontSize: 14,
-              }}
-            >
-              {isLoading ? "Analyzing..." : "Analyze Panel"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Results Section */}
-      {bomResults && (
-        <div
-          style={{
-            background: "#fff",
-            border: "1px solid #ddd",
-            padding: 16,
-            borderRadius: 8,
-            marginBottom: 20,
-          }}
-        >
-          <h3 style={{ margin: 0, marginBottom: 12 }}>
-            3. Parts Breakdown for Manufacturing
-          </h3>
-          <p style={{ margin: "0 0 12px 0", color: "#666", fontSize: 14 }}>
-            Parts required to build {panelQuantity}x {selectedAssembly}:
-          </p>
-
-          <div
-            style={{
-              maxHeight: 400,
-              overflowY: "auto",
-              border: "1px solid #eee",
-              borderRadius: 4,
-            }}
-          >
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#f8f9fa" }}>
-                  <th
-                    style={{
-                      padding: "8px 12px",
-                      textAlign: "left",
-                      borderBottom: "1px solid #dee2e6",
-                      fontSize: 14,
-                    }}
-                  >
-                    Part SKU
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px 12px",
-                      textAlign: "right",
-                      borderBottom: "1px solid #dee2e6",
-                      fontSize: 14,
-                    }}
-                  >
-                    Quantity Required
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(bomResults)
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([sku, qty]) => (
-                    <tr key={sku} style={{ borderBottom: "1px solid #f1f3f4" }}>
-                      <td
-                        style={{
-                          padding: "6px 12px",
-                          fontSize: 13,
-                          fontFamily: "monospace",
-                        }}
-                      >
-                        {sku === "CABLE_GRAY" ? "Gray cable" : sku}
-                      </td>
-                      <td
-                        style={{
-                          padding: "6px 12px",
-                          textAlign: "right",
-                          fontSize: 13,
-                        }}
-                      >
-                        {(() => {
-                          const formattedQty =
-                            qty % 1 === 0
-                              ? qty.toString()
-                              : qty.toFixed(2).replace(/\.?0+$/, "");
-
-                          if (sku === "CABLE_GRAY") {
-                            return `${formattedQty} inches`;
-                          } else {
-                            const numQty = parseFloat(formattedQty);
-                            return `${formattedQty} ${
-                              numQty === 1 ? "piece" : "pieces"
-                            }`;
-                          }
-                        })()}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-
-          <p style={{ margin: "12px 0 0 0", fontSize: 12, color: "#666" }}>
-            Total unique parts: {Object.keys(bomResults).length}
-          </p>
-        </div>
-      )}
-
-      {/* Buildability Section */}
-      {buildability && (
-        <div
-          style={{
-            background: "#fff",
-            border: "1px solid #ddd",
-            padding: 16,
-            borderRadius: 8,
-          }}
-        >
-          <h3 style={{ margin: 0, marginBottom: 12 }}>
-            4. Buildability Analysis
-          </h3>
-
-          <div
-            style={{
-              background: buildability.maxBuildable > 0 ? "#d4edda" : "#f8d7da",
-              border: `1px solid ${
-                buildability.maxBuildable > 0 ? "#c3e6cb" : "#f5c6cb"
-              }`,
-              padding: 12,
-              borderRadius: 4,
-              marginBottom: 16,
-            }}
-          >
-            <h4
-              style={{
-                margin: 0,
-                color: buildability.maxBuildable > 0 ? "#155724" : "#721c24",
-                fontSize: 16,
-              }}
-            >
-              {buildability.maxBuildable >= panelQuantity
-                ? `✅ Can build requested ${panelQuantity} panels`
-                : `❌ Cannot build ${panelQuantity} panels - only ${buildability.maxBuildable} possible`}
-            </h4>
-            <p
-              style={{
-                margin: "8px 0 0 0",
-                fontSize: 12,
-                color:
-                  buildability.maxBuildable >= panelQuantity
-                    ? "#155724"
-                    : "#721c24",
-              }}
-            >
-              {buildability.maxBuildable >= panelQuantity
-                ? "All required parts are available in sufficient quantities."
-                : `Missing parts prevent building the requested quantity. Maximum possible: ${buildability.maxBuildable} panels.`}
-            </p>
-          </div>
-
-          {buildability.limitingComponents.length > 0 && (
-            <div>
-              <h4 style={{ margin: "0 0 8px 0", fontSize: 14 }}>
-                Limiting Components:
-              </h4>
+              <h3 style={{ margin: 0, marginBottom: 12 }}>
+                2. Select Assembly
+              </h3>
               <div
                 style={{
-                  maxHeight: 300,
-                  overflowY: "auto",
-                  border: "1px solid #eee",
-                  borderRadius: 4,
+                  display: "flex",
+                  gap: 12,
+                  alignItems: "center",
+                  flexWrap: "wrap",
                 }}
               >
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "#f8f9fa" }}>
-                      <th
-                        style={{
-                          padding: "8px 12px",
-                          textAlign: "left",
-                          borderBottom: "1px solid #dee2e6",
-                          fontSize: 12,
-                        }}
-                      >
-                        Part SKU
-                      </th>
-                      <th
-                        style={{
-                          padding: "8px 12px",
-                          textAlign: "right",
-                          borderBottom: "1px solid #dee2e6",
-                          fontSize: 12,
-                        }}
-                      >
-                        Available
-                      </th>
-                      <th
-                        style={{
-                          padding: "8px 12px",
-                          textAlign: "right",
-                          borderBottom: "1px solid #dee2e6",
-                          fontSize: 12,
-                        }}
-                      >
-                        Required/Unit
-                      </th>
-                      <th
-                        style={{
-                          padding: "8px 12px",
-                          textAlign: "right",
-                          borderBottom: "1px solid #dee2e6",
-                          fontSize: 12,
-                        }}
-                      >
-                        Total Needed
-                      </th>
-                      <th
-                        style={{
-                          padding: "8px 12px",
-                          textAlign: "right",
-                          borderBottom: "1px solid #dee2e6",
-                          fontSize: 12,
-                        }}
-                      >
-                        Shortage
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {buildability.limitingComponents.map((component) => (
+                <select
+                  value={selectedAssembly}
+                  onChange={(e) => setSelectedAssembly(e.target.value)}
+                  style={{
+                    padding: "8px 12px",
+                    borderRadius: 4,
+                    border: "1px solid #ccc",
+                    minWidth: 200,
+                    fontSize: 14,
+                  }}
+                >
+                  <option value="">Select a panel...</option>
+                  {data.assemblies.map((assembly) => (
+                    <option
+                      key={assembly.assembly_sku}
+                      value={assembly.assembly_sku}
+                    >
+                      {assembly.name} ({assembly.assembly_sku})
+                    </option>
+                  ))}
+                </select>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <label
+                    style={{ fontSize: 14, fontWeight: 500, color: "#333" }}
+                  >
+                    Quantity:
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={panelQuantity}
+                    onChange={(e) =>
+                      setPanelQuantity(parseInt(e.target.value) || 1)
+                    }
+                    style={{
+                      width: 80,
+                      padding: "6px 8px",
+                      border: "1px solid #ccc",
+                      borderRadius: 4,
+                      textAlign: "center",
+                      fontSize: 14,
+                    }}
+                  />
+                  <span style={{ fontSize: 12, color: "#666" }}>panels</span>
+                </div>
+
+                <button
+                  onClick={explodeBomForAssembly}
+                  disabled={!selectedAssembly || isLoading}
+                  style={{
+                    background: "#17a2b8",
+                    color: "white",
+                    border: "none",
+                    padding: "8px 16px",
+                    borderRadius: 4,
+                    cursor:
+                      !selectedAssembly || isLoading
+                        ? "not-allowed"
+                        : "pointer",
+                    opacity: !selectedAssembly || isLoading ? 0.6 : 1,
+                    fontSize: 14,
+                  }}
+                >
+                  {isLoading ? "Analyzing..." : "Analyze Panel"}
+                </button>
+              </div>
+            </div>
+
+            {/* Results */}
+            {bomResults && (
+              <div
+                style={{
+                  background: "#fff",
+                  border: "1px solid #ddd",
+                  padding: 16,
+                  borderRadius: 8,
+                  marginBottom: 20,
+                }}
+              >
+                <h3 style={{ margin: 0, marginBottom: 12 }}>
+                  Parts Required for {panelQuantity} × {selectedAssembly}
+                </h3>
+                <div style={{ overflow: "auto", maxHeight: 300 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: "#f8f9fa" }}>
+                        <th
+                          style={{
+                            padding: "8px 12px",
+                            textAlign: "left",
+                            borderBottom: "1px solid #dee2e6",
+                            fontSize: 12,
+                          }}
+                        >
+                          Part SKU
+                        </th>
+                        <th
+                          style={{
+                            padding: "8px 12px",
+                            textAlign: "right",
+                            borderBottom: "1px solid #dee2e6",
+                            fontSize: 12,
+                          }}
+                        >
+                          Quantity Needed
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(bomResults)
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .map(([sku, qty]) => (
+                          <tr
+                            key={sku}
+                            style={{ borderBottom: "1px solid #f1f3f4" }}
+                          >
+                            <td
+                              style={{
+                                padding: "6px 12px",
+                                fontSize: 12,
+                                fontFamily: "monospace",
+                              }}
+                            >
+                              {sku}
+                            </td>
+                            <td
+                              style={{
+                                padding: "6px 12px",
+                                textAlign: "right",
+                                fontSize: 12,
+                              }}
+                            >
+                              {Math.round(qty)}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Buildability */}
+            {buildability && (
+              <div
+                style={{
+                  background: "#fff",
+                  border: "1px solid #ddd",
+                  padding: 16,
+                  borderRadius: 8,
+                }}
+              >
+                <h3 style={{ margin: 0, marginBottom: 12, color: "#333" }}>
+                  Buildability Analysis
+                </h3>
+                <div
+                  style={{
+                    padding: 12,
+                    borderRadius: 6,
+                    marginBottom: 16,
+                    background:
+                      buildability.maxBuildable >= panelQuantity
+                        ? "#d4edda"
+                        : "#f8d7da",
+                    color:
+                      buildability.maxBuildable >= panelQuantity
+                        ? "#155724"
+                        : "#721c24",
+                  }}
+                >
+                  <strong>
+                    {buildability.maxBuildable >= panelQuantity
+                      ? `✅ Can build requested ${panelQuantity} panels`
+                      : `❌ Cannot build ${panelQuantity} panels - insufficient stock`}
+                  </strong>
+                </div>
+                <h4 style={{ margin: "0 0 8px 0", fontSize: 14 }}>
+                  Limiting Components:
+                </h4>
+                <div style={{ overflow: "auto", maxHeight: 300 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: "#f8f9fa" }}>
+                        <th
+                          style={{
+                            padding: "8px 12px",
+                            textAlign: "left",
+                            borderBottom: "1px solid #dee2e6",
+                            fontSize: 12,
+                          }}
+                        >
+                          Part SKU
+                        </th>
+                        <th
+                          style={{
+                            padding: "8px 12px",
+                            textAlign: "right",
+                            borderBottom: "1px solid #dee2e6",
+                            fontSize: 12,
+                          }}
+                        >
+                          Available
+                        </th>
+                        <th
+                          style={{
+                            padding: "8px 12px",
+                            textAlign: "right",
+                            borderBottom: "1px solid #dee2e6",
+                            fontSize: 12,
+                          }}
+                        >
+                          Required/Unit
+                        </th>
+                        <th
+                          style={{
+                            padding: "8px 12px",
+                            textAlign: "right",
+                            borderBottom: "1px solid #dee2e6",
+                            fontSize: 12,
+                          }}
+                        >
+                          Total Needed
+                        </th>
+                        <th
+                          style={{
+                            padding: "8px 12px",
+                            textAlign: "right",
+                            borderBottom: "1px solid #dee2e6",
+                            fontSize: 12,
+                          }}
+                        >
+                          Shortage
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {buildability.limitingComponents.map((component) => (
+                        <tr
+                          key={component.sku}
+                          style={{ borderBottom: "1px solid #f1f3f4" }}
+                        >
+                          <td
+                            style={{
+                              padding: "6px 12px",
+                              fontSize: 12,
+                              fontFamily: "monospace",
+                            }}
+                          >
+                            {component.sku}
+                          </td>
+                          <td
+                            style={{
+                              padding: "6px 12px",
+                              textAlign: "right",
+                              fontSize: 12,
+                            }}
+                          >
+                            {Math.round(component.available)}
+                          </td>
+                          <td
+                            style={{
+                              padding: "6px 12px",
+                              textAlign: "right",
+                              fontSize: 12,
+                            }}
+                          >
+                            {component.reqPerUnit.toFixed(4)}
+                          </td>
+                          <td
+                            style={{
+                              padding: "6px 12px",
+                              textAlign: "right",
+                              fontSize: 12,
+                            }}
+                          >
+                            {Math.round(component.reqPerUnit * panelQuantity)}
+                          </td>
+                          <td
+                            style={{
+                              padding: "6px 12px",
+                              textAlign: "right",
+                              fontSize: 12,
+                              background:
+                                component.reqPerUnit * panelQuantity >
+                                component.available
+                                  ? "#ffebee"
+                                  : "transparent",
+                              color:
+                                component.reqPerUnit * panelQuantity >
+                                component.available
+                                  ? "#c62828"
+                                  : "inherit",
+                            }}
+                          >
+                            {Math.max(
+                              0,
+                              Math.round(
+                                component.reqPerUnit * panelQuantity -
+                                  component.available
+                              )
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Inventory Tab */}
+      <div style={{ display: activeTab === "inventory" ? "block" : "none" }}>
+        <h2 style={{ margin: "0 0 20px 0" }}>📦 Inventory Management</h2>
+
+        {/* Build Recording Section */}
+        {data && (
+          <div
+            style={{
+              background: "#f9f9f9",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              padding: 20,
+              margin: "20px 0",
+            }}
+          >
+            <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
+              📝 Record Panel Build
+            </h3>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                gap: "16px",
+                marginBottom: "16px",
+              }}
+            >
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Panel Type *
+                </label>
+                <select
+                  value={buildAssembly}
+                  onChange={(e) => setBuildAssembly(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                >
+                  <option value="">Select panel to build...</option>
+                  {data.assemblies.map((assembly) => (
+                    <option
+                      key={assembly.assembly_sku}
+                      value={assembly.assembly_sku}
+                    >
+                      {assembly.name} ({assembly.assembly_sku})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Work Order *
+                </label>
+                <input
+                  type="text"
+                  value={workOrder}
+                  onChange={(e) => setWorkOrder(e.target.value)}
+                  placeholder="e.g., WO#23898"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Sales Order *
+                </label>
+                <input
+                  type="text"
+                  value={salesOrder}
+                  onChange={(e) => setSalesOrder(e.target.value)}
+                  placeholder="e.g., SO#23709"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Customer *
+                </label>
+                <input
+                  type="text"
+                  value={customer}
+                  onChange={(e) => setCustomer(e.target.value)}
+                  placeholder="e.g., TDH, BEACON, City of Toronto"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Quantity Built *
+                </label>
+                <input
+                  type="number"
+                  value={builtQuantity}
+                  onChange={(e) =>
+                    setBuiltQuantity(parseInt(e.target.value) || 1)
+                  }
+                  min="1"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Operator
+                </label>
+                <input
+                  type="text"
+                  value={operator}
+                  onChange={(e) => setOperator(e.target.value)}
+                  placeholder="Optional"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "4px",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                }}
+              >
+                Notes
+              </label>
+              <textarea
+                value={buildNotes}
+                onChange={(e) => setBuildNotes(e.target.value)}
+                placeholder="Optional build notes..."
+                rows={3}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #ddd",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+              <button
+                onClick={handleRecordBuild}
+                disabled={isRecordingBuild || !buildAssembly}
+                style={{
+                  background:
+                    isRecordingBuild || !buildAssembly ? "#ccc" : "#28a745",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "10px 20px",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor:
+                    isRecordingBuild || !buildAssembly
+                      ? "not-allowed"
+                      : "pointer",
+                  transition: "background-color 0.2s",
+                }}
+              >
+                {isRecordingBuild
+                  ? "Recording..."
+                  : buildAssembly
+                  ? `Record Build: ${builtQuantity} × ${buildAssembly}`
+                  : "Select panel type to record build"}
+              </button>
+
+              <span style={{ fontSize: "12px", color: "#666" }}>
+                This will update inventory levels automatically
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Build History Section */}
+        {data && data.build_history && data.build_history.length > 0 && (
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              padding: 20,
+              margin: "20px 0",
+            }}
+          >
+            <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
+              📋 Recent Build History
+            </h3>
+            <div style={{ overflow: "auto", maxHeight: 400 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f8f9fa" }}>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Date/Time
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Panel Type
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Qty
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Work Order
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Sales Order
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Customer
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Operator
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.build_history
+                    .slice()
+                    .sort(
+                      (a, b) =>
+                        new Date(b.timestamp).getTime() -
+                        new Date(a.timestamp).getTime()
+                    )
+                    .slice(0, 20)
+                    .map((record) => (
                       <tr
-                        key={component.sku}
-                        style={{ borderBottom: "1px solid #f1f3f4" }}
+                        key={record.id}
+                        style={{
+                          borderBottom: "1px solid #f1f3f4",
+                        }}
                       >
                         <td
                           style={{
-                            padding: "6px 12px",
-                            fontSize: 12,
+                            padding: "8px 12px",
+                            fontSize: 11,
                             fontFamily: "monospace",
                           }}
                         >
-                          {component.sku}
+                          {new Date(record.timestamp).toLocaleString()}
                         </td>
                         <td
                           style={{
-                            padding: "6px 12px",
-                            textAlign: "right",
+                            padding: "8px 12px",
                             fontSize: 12,
+                            fontFamily: "monospace",
+                            fontWeight: 500,
                           }}
                         >
-                          {Math.round(component.available)}
+                          {record.assembly_sku}
                         </td>
                         <td
                           style={{
-                            padding: "6px 12px",
+                            padding: "8px 12px",
                             textAlign: "right",
                             fontSize: 12,
+                            fontWeight: 600,
                           }}
                         >
-                          {component.reqPerUnit.toFixed(4)}
+                          {record.quantity_built}
                         </td>
                         <td
                           style={{
-                            padding: "6px 12px",
-                            textAlign: "right",
-                            fontSize: 12,
+                            padding: "8px 12px",
+                            fontSize: 11,
                           }}
                         >
-                          {Math.round(component.reqPerUnit * panelQuantity)}
+                          {record.work_order}
                         </td>
                         <td
                           style={{
-                            padding: "6px 12px",
-                            textAlign: "right",
-                            fontSize: 12,
-                            background:
-                              component.reqPerUnit * panelQuantity >
-                              component.available
-                                ? "#ffebee"
-                                : "transparent",
-                            color:
-                              component.reqPerUnit * panelQuantity >
-                              component.available
-                                ? "#c62828"
-                                : "inherit",
+                            padding: "8px 12px",
+                            fontSize: 11,
                           }}
                         >
-                          {Math.max(
-                            0,
-                            Math.round(
-                              component.reqPerUnit * panelQuantity -
-                                component.available
-                            )
-                          )}
+                          {record.sales_order}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px 12px",
+                            fontSize: 12,
+                          }}
+                        >
+                          {record.customer}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px 12px",
+                            fontSize: 11,
+                            color: "#666",
+                          }}
+                        >
+                          {record.operator || "-"}
                         </td>
                       </tr>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
-      )}
+            <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
+              Showing last 20 builds. For complete history, check the
+              History.csv file.
+            </div>
+          </div>
+        )}
 
-      {/* Build Recording Section */}
-      {data && selectedAssembly && (
-        <div
-          style={{
-            background: "#f9f9f9",
-            border: "1px solid #ddd",
-            borderRadius: 8,
-            padding: 20,
-            margin: "20px 0",
-          }}
-        >
-          <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
-            📝 Record Panel Build
-          </h3>
-
+        {/* Stock Levels Section */}
+        {data && data.stock && data.stock.length > 0 && (
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-              gap: "16px",
-              marginBottom: "16px",
+              background: "#fff",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              padding: 20,
+              margin: "20px 0",
             }}
           >
-            {/* Work Order */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "4px",
-                  fontWeight: "600",
-                  fontSize: "14px",
-                }}
-              >
-                Work Order *
-              </label>
-              <input
-                type="text"
-                value={workOrder}
-                onChange={(e) => setWorkOrder(e.target.value)}
-                placeholder="e.g., WO#23898"
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px",
-                  fontSize: "14px",
-                }}
-              />
-            </div>
+            <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
+              📊 Current Stock Levels
+            </h3>
+            <div style={{ overflow: "auto", maxHeight: 400 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f8f9fa" }}>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Part SKU
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      On Hand
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Reserved
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Available
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.stock
+                    .slice()
+                    .sort((a, b) => a.sku.localeCompare(b.sku))
+                    .map((stockItem) => {
+                      const available =
+                        stockItem.on_hand_qty - stockItem.reserved_qty;
+                      const isLowStock = available <= 0;
 
-            {/* Sales Order */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "4px",
-                  fontWeight: "600",
-                  fontSize: "14px",
-                }}
-              >
-                Sales Order *
-              </label>
-              <input
-                type="text"
-                value={salesOrder}
-                onChange={(e) => setSalesOrder(e.target.value)}
-                placeholder="e.g., SO#23709"
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px",
-                  fontSize: "14px",
-                }}
-              />
+                      return (
+                        <tr
+                          key={stockItem.sku}
+                          style={{
+                            borderBottom: "1px solid #f1f3f4",
+                            background: isLowStock ? "#fff5f5" : "transparent",
+                          }}
+                        >
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: 12,
+                              fontFamily: "monospace",
+                            }}
+                          >
+                            {stockItem.sku}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              textAlign: "right",
+                              fontSize: 12,
+                            }}
+                          >
+                            {stockItem.on_hand_qty}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              textAlign: "right",
+                              fontSize: 12,
+                            }}
+                          >
+                            {stockItem.reserved_qty}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              textAlign: "right",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: isLowStock ? "#dc3545" : "#28a745",
+                            }}
+                          >
+                            {Math.max(0, available)}
+                            {isLowStock && " ⚠️"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
             </div>
-
-            {/* Customer */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "4px",
-                  fontWeight: "600",
-                  fontSize: "14px",
-                }}
-              >
-                Customer *
-              </label>
-              <input
-                type="text"
-                value={customer}
-                onChange={(e) => setCustomer(e.target.value)}
-                placeholder="e.g., TDH, BEACON, City of Toronto"
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px",
-                  fontSize: "14px",
-                }}
-              />
-            </div>
-
-            {/* Quantity Built */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "4px",
-                  fontWeight: "600",
-                  fontSize: "14px",
-                }}
-              >
-                Quantity Built *
-              </label>
-              <input
-                type="number"
-                value={builtQuantity}
-                onChange={(e) =>
-                  setBuiltQuantity(parseInt(e.target.value) || 1)
-                }
-                min="1"
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px",
-                  fontSize: "14px",
-                }}
-              />
-            </div>
-
-            {/* Operator (Optional) */}
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "4px",
-                  fontWeight: "600",
-                  fontSize: "14px",
-                }}
-              >
-                Operator
-              </label>
-              <input
-                type="text"
-                value={operator}
-                onChange={(e) => setOperator(e.target.value)}
-                placeholder="Optional"
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px",
-                  fontSize: "14px",
-                }}
-              />
+            <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
+              ⚠️ indicates low or out-of-stock items. Available = On Hand -
+              Reserved.
             </div>
           </div>
-
-          {/* Notes */}
-          <div style={{ marginBottom: "16px" }}>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "4px",
-                fontWeight: "600",
-                fontSize: "14px",
-              }}
-            >
-              Notes
-            </label>
-            <textarea
-              value={buildNotes}
-              onChange={(e) => setBuildNotes(e.target.value)}
-              placeholder="Optional build notes..."
-              rows={3}
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                border: "1px solid #ddd",
-                borderRadius: "4px",
-                fontSize: "14px",
-                resize: "vertical",
-              }}
-            />
-          </div>
-
-          {/* Record Button */}
-          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-            <button
-              onClick={handleRecordBuild}
-              disabled={isRecordingBuild}
-              style={{
-                background: isRecordingBuild ? "#ccc" : "#28a745",
-                color: "white",
-                border: "none",
-                borderRadius: 6,
-                padding: "10px 20px",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: isRecordingBuild ? "not-allowed" : "pointer",
-                transition: "background-color 0.2s",
-              }}
-            >
-              {isRecordingBuild
-                ? "Recording..."
-                : `Record Build: ${builtQuantity} × ${selectedAssembly}`}
-            </button>
-
-            <span style={{ fontSize: "12px", color: "#666" }}>
-              This will update inventory levels automatically
-            </span>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
