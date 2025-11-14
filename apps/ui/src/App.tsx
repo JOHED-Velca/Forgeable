@@ -1305,6 +1305,185 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {/* Assembly Production Summary */}
+        {data && data.build_history && data.build_history.length > 0 && (
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              padding: 20,
+              margin: "20px 0",
+            }}
+          >
+            <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
+              🏭 Panel Production Summary
+            </h3>
+            <div style={{ overflow: "auto", maxHeight: 400 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f8f9fa" }}>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Panel Type
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Panel Name
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Total Built
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Builds
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Last Built
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    // Group builds by assembly_sku and calculate totals
+                    const assemblyStats = new Map<string, {
+                      totalQuantity: number;
+                      buildCount: number;
+                      lastBuild: string;
+                      name: string;
+                    }>();
+
+                    // Process build history
+                    data.build_history.forEach(record => {
+                      const existing = assemblyStats.get(record.assembly_sku);
+                      const recordDate = new Date(record.timestamp);
+                      
+                      if (existing) {
+                        existing.totalQuantity += record.quantity_built;
+                        existing.buildCount += 1;
+                        const existingDate = new Date(existing.lastBuild);
+                        if (recordDate > existingDate) {
+                          existing.lastBuild = record.timestamp;
+                        }
+                      } else {
+                        // Find assembly name
+                        const assembly = data.assemblies.find(a => a.assembly_sku === record.assembly_sku);
+                        assemblyStats.set(record.assembly_sku, {
+                          totalQuantity: record.quantity_built,
+                          buildCount: 1,
+                          lastBuild: record.timestamp,
+                          name: assembly?.name || record.assembly_sku
+                        });
+                      }
+                    });
+
+                    // Convert to array and sort by total quantity (highest first)
+                    return Array.from(assemblyStats.entries())
+                      .sort(([,a], [,b]) => b.totalQuantity - a.totalQuantity)
+                      .map(([assemblySku, stats]) => (
+                        <tr
+                          key={assemblySku}
+                          style={{ 
+                            borderBottom: "1px solid #f1f3f4",
+                          }}
+                        >
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: 12,
+                              fontFamily: "monospace",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {assemblySku}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: 12,
+                            }}
+                          >
+                            {stats.name}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              textAlign: "right",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: "#28a745",
+                            }}
+                          >
+                            {stats.totalQuantity}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              textAlign: "right",
+                              fontSize: 12,
+                              color: "#666",
+                            }}
+                          >
+                            {stats.buildCount}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: 11,
+                              color: "#666",
+                            }}
+                          >
+                            {new Date(stats.lastBuild).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
+              Summary of all panel types built from production history. Sorted by total quantity produced.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
