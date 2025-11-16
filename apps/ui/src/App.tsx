@@ -18,9 +18,9 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Tab management
-  const [activeTab, setActiveTab] = useState<"analysis" | "inventory">(
-    "analysis"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "analysis" | "inventory" | "record"
+  >("analysis");
 
   // Build tracking state
   const [buildAssembly, setBuildAssembly] = useState<string>(""); // Separate from selectedAssembly
@@ -317,6 +317,24 @@ export default function App() {
             }}
           >
             📦 Inventory
+          </button>
+          <button
+            onClick={() => setActiveTab("record")}
+            style={{
+              background: activeTab === "record" ? "#007bff" : "transparent",
+              color: activeTab === "record" ? "white" : "#007bff",
+              border: "none",
+              padding: "12px 24px",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              borderRadius: "8px 8px 0 0",
+              borderBottom:
+                activeTab === "record" ? "2px solid #007bff" : "none",
+              marginBottom: activeTab === "record" ? "-2px" : "0",
+            }}
+          >
+            📝 Record Build
           </button>
         </div>
       </div>
@@ -735,257 +753,6 @@ export default function App() {
       <div style={{ display: activeTab === "inventory" ? "block" : "none" }}>
         <h2 style={{ margin: "0 0 20px 0" }}>📦 Inventory Management</h2>
 
-        {/* Build Recording Section */}
-        {data && (
-          <div
-            style={{
-              background: "#f9f9f9",
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              padding: 20,
-              margin: "20px 0",
-            }}
-          >
-            <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
-              📝 Record Panel Build
-            </h3>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                gap: "16px",
-                marginBottom: "16px",
-              }}
-            >
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "4px",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                  }}
-                >
-                  Panel Type *
-                </label>
-                <select
-                  value={buildAssembly}
-                  onChange={(e) => setBuildAssembly(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    border: "1px solid #ddd",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                  }}
-                >
-                  <option value="">Select panel to build...</option>
-                  {data.assemblies.map((assembly) => (
-                    <option
-                      key={assembly.assembly_sku}
-                      value={assembly.assembly_sku}
-                    >
-                      {assembly.name} ({assembly.assembly_sku})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "4px",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                  }}
-                >
-                  Work Order *
-                </label>
-                <input
-                  type="text"
-                  value={workOrder}
-                  onChange={(e) => setWorkOrder(e.target.value)}
-                  placeholder="e.g., WO#23898"
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    border: "1px solid #ddd",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                  }}
-                />
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "4px",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                  }}
-                >
-                  Sales Order *
-                </label>
-                <input
-                  type="text"
-                  value={salesOrder}
-                  onChange={(e) => setSalesOrder(e.target.value)}
-                  placeholder="e.g., SO#23709"
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    border: "1px solid #ddd",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                  }}
-                />
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "4px",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                  }}
-                >
-                  Customer *
-                </label>
-                <input
-                  type="text"
-                  value={customer}
-                  onChange={(e) => setCustomer(e.target.value)}
-                  placeholder="e.g., TDH, BEACON, City of Toronto"
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    border: "1px solid #ddd",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                  }}
-                />
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "4px",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                  }}
-                >
-                  Quantity Built *
-                </label>
-                <input
-                  type="number"
-                  value={builtQuantity}
-                  onChange={(e) =>
-                    setBuiltQuantity(parseInt(e.target.value) || 1)
-                  }
-                  min="1"
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    border: "1px solid #ddd",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                  }}
-                />
-              </div>
-
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "4px",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                  }}
-                >
-                  Operator
-                </label>
-                <input
-                  type="text"
-                  value={operator}
-                  onChange={(e) => setOperator(e.target.value)}
-                  placeholder="Optional"
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    border: "1px solid #ddd",
-                    borderRadius: "4px",
-                    fontSize: "14px",
-                  }}
-                />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: "16px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "4px",
-                  fontWeight: "600",
-                  fontSize: "14px",
-                }}
-              >
-                Notes
-              </label>
-              <textarea
-                value={buildNotes}
-                onChange={(e) => setBuildNotes(e.target.value)}
-                placeholder="Optional build notes..."
-                rows={3}
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  border: "1px solid #ddd",
-                  borderRadius: "4px",
-                  fontSize: "14px",
-                  resize: "vertical",
-                }}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-              <button
-                onClick={handleRecordBuild}
-                disabled={isRecordingBuild || !buildAssembly}
-                style={{
-                  background:
-                    isRecordingBuild || !buildAssembly ? "#ccc" : "#28a745",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 6,
-                  padding: "10px 20px",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor:
-                    isRecordingBuild || !buildAssembly
-                      ? "not-allowed"
-                      : "pointer",
-                  transition: "background-color 0.2s",
-                }}
-              >
-                {isRecordingBuild
-                  ? "Recording..."
-                  : buildAssembly
-                  ? `Record Build: ${builtQuantity} × ${buildAssembly}`
-                  : "Select panel type to record build"}
-              </button>
-
-              <span style={{ fontSize: "12px", color: "#666" }}>
-                This will update inventory levels automatically
-              </span>
-            </div>
-          </div>
-        )}
-
         {/* Build History Section */}
         {data && data.build_history && data.build_history.length > 0 && (
           <div
@@ -1384,18 +1151,21 @@ export default function App() {
                 <tbody>
                   {(() => {
                     // Group builds by assembly_sku and calculate totals
-                    const assemblyStats = new Map<string, {
-                      totalQuantity: number;
-                      buildCount: number;
-                      lastBuild: string;
-                      name: string;
-                    }>();
+                    const assemblyStats = new Map<
+                      string,
+                      {
+                        totalQuantity: number;
+                        buildCount: number;
+                        lastBuild: string;
+                        name: string;
+                      }
+                    >();
 
                     // Process build history
-                    data.build_history.forEach(record => {
+                    data.build_history.forEach((record) => {
                       const existing = assemblyStats.get(record.assembly_sku);
                       const recordDate = new Date(record.timestamp);
-                      
+
                       if (existing) {
                         existing.totalQuantity += record.quantity_built;
                         existing.buildCount += 1;
@@ -1405,23 +1175,25 @@ export default function App() {
                         }
                       } else {
                         // Find assembly name
-                        const assembly = data.assemblies.find(a => a.assembly_sku === record.assembly_sku);
+                        const assembly = data.assemblies.find(
+                          (a) => a.assembly_sku === record.assembly_sku
+                        );
                         assemblyStats.set(record.assembly_sku, {
                           totalQuantity: record.quantity_built,
                           buildCount: 1,
                           lastBuild: record.timestamp,
-                          name: assembly?.name || record.assembly_sku
+                          name: assembly?.name || record.assembly_sku,
                         });
                       }
                     });
 
                     // Convert to array and sort by total quantity (highest first)
                     return Array.from(assemblyStats.entries())
-                      .sort(([,a], [,b]) => b.totalQuantity - a.totalQuantity)
+                      .sort(([, a], [, b]) => b.totalQuantity - a.totalQuantity)
                       .map(([assemblySku, stats]) => (
                         <tr
                           key={assemblySku}
-                          style={{ 
+                          style={{
                             borderBottom: "1px solid #f1f3f4",
                           }}
                         >
@@ -1480,8 +1252,285 @@ export default function App() {
               </table>
             </div>
             <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
-              Summary of all panel types built from production history. Sorted by total quantity produced.
+              Summary of all panel types built from production history. Sorted
+              by total quantity produced.
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Record Build Tab */}
+      <div style={{ display: activeTab === "record" ? "block" : "none" }}>
+        <h2 style={{ margin: "0 0 20px 0" }}>📝 Record Panel Build</h2>
+
+        {data && (
+          <div
+            style={{
+              background: "#f9f9f9",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              padding: 20,
+              margin: "20px 0",
+              maxWidth: 800,
+            }}
+          >
+            <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
+              📋 Build Recording Form
+            </h3>
+            <p style={{ margin: "0 0 20px 0", color: "#666", fontSize: 14 }}>
+              Record a completed panel build to update inventory levels
+              automatically.
+            </p>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+                gap: "16px",
+                marginBottom: "16px",
+              }}
+            >
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Panel Type *
+                </label>
+                <select
+                  value={buildAssembly}
+                  onChange={(e) => setBuildAssembly(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                >
+                  <option value="">Select panel to build...</option>
+                  {data.assemblies.map((assembly) => (
+                    <option
+                      key={assembly.assembly_sku}
+                      value={assembly.assembly_sku}
+                    >
+                      {assembly.name} ({assembly.assembly_sku})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Work Order *
+                </label>
+                <input
+                  type="text"
+                  value={workOrder}
+                  onChange={(e) => setWorkOrder(e.target.value)}
+                  placeholder="e.g., WO#23898"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Sales Order *
+                </label>
+                <input
+                  type="text"
+                  value={salesOrder}
+                  onChange={(e) => setSalesOrder(e.target.value)}
+                  placeholder="e.g., SO#23709"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Customer *
+                </label>
+                <input
+                  type="text"
+                  value={customer}
+                  onChange={(e) => setCustomer(e.target.value)}
+                  placeholder="e.g., TDH, BEACON, City of Toronto"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Quantity Built *
+                </label>
+                <input
+                  type="number"
+                  value={builtQuantity}
+                  onChange={(e) =>
+                    setBuiltQuantity(parseInt(e.target.value) || 1)
+                  }
+                  min="1"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "4px",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Operator
+                </label>
+                <input
+                  type="text"
+                  value={operator}
+                  onChange={(e) => setOperator(e.target.value)}
+                  placeholder="Optional"
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ddd",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "16px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "4px",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                }}
+              >
+                Notes
+              </label>
+              <textarea
+                value={buildNotes}
+                onChange={(e) => setBuildNotes(e.target.value)}
+                placeholder="Optional build notes..."
+                rows={3}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  border: "1px solid #ddd",
+                  borderRadius: "4px",
+                  fontSize: "14px",
+                  resize: "vertical",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+              <button
+                onClick={handleRecordBuild}
+                disabled={isRecordingBuild || !buildAssembly}
+                style={{
+                  background:
+                    isRecordingBuild || !buildAssembly ? "#ccc" : "#28a745",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "12px 24px",
+                  fontSize: 16,
+                  fontWeight: 600,
+                  cursor:
+                    isRecordingBuild || !buildAssembly
+                      ? "not-allowed"
+                      : "pointer",
+                  transition: "background-color 0.2s",
+                }}
+              >
+                {isRecordingBuild
+                  ? "Recording..."
+                  : buildAssembly
+                  ? `Record Build: ${builtQuantity} × ${buildAssembly}`
+                  : "Select panel type to record build"}
+              </button>
+
+              <span style={{ fontSize: "12px", color: "#666" }}>
+                This will update inventory levels automatically
+              </span>
+            </div>
+          </div>
+        )}
+
+        {data && !data.assemblies?.length && (
+          <div
+            style={{
+              background: "#fff3cd",
+              border: "1px solid #ffeaa7",
+              borderRadius: 8,
+              padding: 16,
+              margin: "20px 0",
+            }}
+          >
+            <p style={{ margin: 0, color: "#856404" }}>
+              ⚠️ Please load CSV data first to access the build recording form.
+            </p>
           </div>
         )}
       </div>
