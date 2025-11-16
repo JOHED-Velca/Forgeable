@@ -1,6 +1,11 @@
 import { useState } from "react";
-import { loadData, recordBuild } from "./services/native";
-import type { SKU, DataSnapshot, Buildability } from "./domain/types";
+import { loadData, recordBuild, loadPanelHistory } from "./services/native";
+import type {
+  SKU,
+  DataSnapshot,
+  Buildability,
+  BuildHistoryRecord,
+} from "./domain/types";
 import { indexBomByParent, explodeBom } from "./domain/bomExplode";
 
 export default function App() {
@@ -19,7 +24,7 @@ export default function App() {
 
   // Tab management
   const [activeTab, setActiveTab] = useState<
-    "analysis" | "inventory" | "record"
+    "analysis" | "inventory" | "record" | "history"
   >("analysis");
 
   // Build tracking state
@@ -31,6 +36,8 @@ export default function App() {
   const [operator, setOperator] = useState<string>("");
   const [buildNotes, setBuildNotes] = useState<string>("");
   const [isRecordingBuild, setIsRecordingBuild] = useState(false);
+  const [panelHistory, setPanelHistory] = useState<BuildHistoryRecord[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Keep existing validation function
   const validateCsvData = (
@@ -269,6 +276,29 @@ export default function App() {
     }
   };
 
+  const loadPanelHistoryData = async () => {
+    if (!selectedFolder) {
+      setTestStatus("❌ Please select a data folder first");
+      return;
+    }
+
+    setIsLoadingHistory(true);
+    try {
+      const history = await loadPanelHistory(selectedFolder);
+      setPanelHistory(history);
+      setTestStatus(`✅ Panel history loaded: ${history.length} records found`);
+    } catch (error) {
+      setTestStatus(
+        `❌ Failed to load panel history: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      setPanelHistory([]);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -335,6 +365,24 @@ export default function App() {
             }}
           >
             📝 Record Build
+          </button>
+          <button
+            onClick={() => setActiveTab("history")}
+            style={{
+              background: activeTab === "history" ? "#007bff" : "transparent",
+              color: activeTab === "history" ? "white" : "#007bff",
+              border: "none",
+              padding: "12px 24px",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              borderRadius: "8px 8px 0 0",
+              borderBottom:
+                activeTab === "history" ? "2px solid #007bff" : "none",
+              marginBottom: activeTab === "history" ? "-2px" : "0",
+            }}
+          >
+            📈 History
           </button>
         </div>
       </div>
@@ -1530,6 +1578,284 @@ export default function App() {
           >
             <p style={{ margin: 0, color: "#856404" }}>
               ⚠️ Please load CSV data first to access the build recording form.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* History Tab */}
+      <div style={{ display: activeTab === "history" ? "block" : "none" }}>
+        <h2 style={{ margin: "0 0 20px 0" }}>📈 Panel Build History</h2>
+
+        <div
+          style={{
+            background: "#f9f9f9",
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            padding: 20,
+            margin: "20px 0",
+          }}
+        >
+          <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
+            📋 Load Panel History
+          </h3>
+          <p style={{ margin: "0 0 16px 0", color: "#666", fontSize: 14 }}>
+            Load and view the complete build history from the panel_history.csv
+            file.
+          </p>
+
+          <button
+            onClick={loadPanelHistoryData}
+            disabled={isLoadingHistory || !selectedFolder}
+            style={{
+              background: !selectedFolder
+                ? "#6c757d"
+                : isLoadingHistory
+                ? "#ccc"
+                : "#007bff",
+              color: "white",
+              border: "none",
+              padding: "12px 24px",
+              borderRadius: 6,
+              cursor:
+                !selectedFolder || isLoadingHistory ? "not-allowed" : "pointer",
+              fontSize: 14,
+              fontWeight: 600,
+              marginBottom: 16,
+            }}
+          >
+            {isLoadingHistory ? "Loading..." : "Load Panel History"}
+          </button>
+
+          {!selectedFolder && (
+            <p style={{ margin: "8px 0 0 0", color: "#dc3545", fontSize: 12 }}>
+              Please select a data folder first
+            </p>
+          )}
+        </div>
+
+        {panelHistory.length > 0 && (
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              padding: 20,
+              margin: "20px 0",
+            }}
+          >
+            <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
+              📊 Complete Build History ({panelHistory.length} records)
+            </h3>
+            <div style={{ overflow: "auto", maxHeight: 600 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f8f9fa" }}>
+                    <th
+                      style={{
+                        padding: "12px 8px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Date/Time
+                    </th>
+                    <th
+                      style={{
+                        padding: "12px 8px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Panel Type
+                    </th>
+                    <th
+                      style={{
+                        padding: "12px 8px",
+                        textAlign: "right",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Qty
+                    </th>
+                    <th
+                      style={{
+                        padding: "12px 8px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Work Order
+                    </th>
+                    <th
+                      style={{
+                        padding: "12px 8px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Sales Order
+                    </th>
+                    <th
+                      style={{
+                        padding: "12px 8px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Customer
+                    </th>
+                    <th
+                      style={{
+                        padding: "12px 8px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Operator
+                    </th>
+                    <th
+                      style={{
+                        padding: "12px 8px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Notes
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {panelHistory
+                    .slice()
+                    .sort(
+                      (a, b) =>
+                        new Date(b.timestamp).getTime() -
+                        new Date(a.timestamp).getTime()
+                    )
+                    .map((record) => (
+                      <tr
+                        key={record.id}
+                        style={{
+                          borderBottom: "1px solid #f1f3f4",
+                        }}
+                      >
+                        <td
+                          style={{
+                            padding: "8px",
+                            fontSize: 11,
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          {new Date(record.timestamp).toLocaleString()}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px",
+                            fontSize: 12,
+                            fontFamily: "monospace",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {record.assembly_sku}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px",
+                            textAlign: "right",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "#28a745",
+                          }}
+                        >
+                          {record.quantity_built}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px",
+                            fontSize: 11,
+                          }}
+                        >
+                          {record.work_order}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px",
+                            fontSize: 11,
+                          }}
+                        >
+                          {record.sales_order}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px",
+                            fontSize: 12,
+                          }}
+                        >
+                          {record.customer}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px",
+                            fontSize: 11,
+                            color: "#666",
+                          }}
+                        >
+                          {record.operator || "-"}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px",
+                            fontSize: 11,
+                            color: "#666",
+                            maxWidth: 200,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {record.notes || "-"}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
+              Complete build history sorted by most recent first. Data from
+              panel_history.csv file.
+            </div>
+          </div>
+        )}
+
+        {panelHistory.length === 0 && selectedFolder && (
+          <div
+            style={{
+              background: "#fff3cd",
+              border: "1px solid #ffeaa7",
+              borderRadius: 8,
+              padding: 16,
+              margin: "20px 0",
+            }}
+          >
+            <p style={{ margin: 0, color: "#856404" }}>
+              📝 No panel build history found. Build some panels first using the
+              Record Build tab to see history here.
             </p>
           </div>
         )}

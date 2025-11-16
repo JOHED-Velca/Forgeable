@@ -92,7 +92,7 @@ fn read_csv<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<Vec<T>> {
     Ok(out)
 }
 
-fn read_csv_optional<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<Vec<T>> {
+pub fn read_csv_optional<T: for<'de> Deserialize<'de>>(path: &Path) -> Option<Vec<T>> {
     match read_csv::<T>(path) {
         Ok(data) => Some(data),
         Err(_) => None, // File doesn't exist or can't be read
@@ -237,6 +237,40 @@ fn write_stock_csv(data_dir: &Path, stock: &[StockRow]) -> Result<()> {
             stock_item.reserved_qty
         ).context("Failed to write stock record")?;
     }
+    
+    Ok(())
+}
+
+/// Add a build record to the panel_history.csv file
+pub fn add_panel_history_record(data_dir: &Path, record: &BuildHistoryRecord) -> Result<()> {
+    let file_path = data_dir.join("panel_history.csv");
+    
+    // Check if file exists, if not create with headers
+    let file_exists = file_path.exists();
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&file_path)
+        .with_context(|| format!("Failed to open panel_history.csv for writing"))?;
+    
+    // Write headers if file is new
+    if !file_exists {
+        writeln!(file, "id,timestamp,work_order,sales_order,customer,assembly_sku,quantity_built,operator,notes")
+            .context("Failed to write headers to panel_history.csv")?;
+    }
+    
+    // Write the record
+    writeln!(file, "{},{},{},{},{},{},{},{},{}",
+        record.id,
+        record.timestamp,
+        record.work_order,
+        record.sales_order,
+        record.customer,
+        record.assembly_sku,
+        record.quantity_built,
+        record.operator.as_deref().unwrap_or(""),
+        record.notes.as_deref().unwrap_or("")
+    ).context("Failed to write panel history record")?;
     
     Ok(())
 }

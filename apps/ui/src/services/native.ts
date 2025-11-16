@@ -10,13 +10,21 @@ export async function recordBuild(
   buildRecord: Omit<BuildHistoryRecord, "id" | "timestamp">
 ): Promise<DataSnapshot> {
   return await invoke<DataSnapshot>("record_build", {
-    data_dir: dataDir,
-    work_order: buildRecord.work_order,
-    sales_order: buildRecord.sales_order,
+    dataDir,
+    workOrder: buildRecord.work_order,
+    salesOrder: buildRecord.sales_order,
     customer: buildRecord.customer,
-    assembly_sku: buildRecord.assembly_sku,
-    quantity_built: buildRecord.quantity_built,
+    assemblySku: buildRecord.assembly_sku,
+    quantityBuilt: buildRecord.quantity_built,
     operator: buildRecord.operator || null,
     notes: buildRecord.notes || null,
+  });
+}
+
+export async function loadPanelHistory(
+  dataDir: string
+): Promise<BuildHistoryRecord[]> {
+  return await invoke<BuildHistoryRecord[]>("load_panel_history", {
+    dataDir,
   });
 }

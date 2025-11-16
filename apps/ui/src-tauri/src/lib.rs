@@ -1,8 +1,7 @@
 mod data;
 
 use std::path::PathBuf;
-use data::{DataSnapshot, BuildHistoryRecord, load_data_dir, add_build_record, update_stock_after_build};
-use tauri::Manager;
+use data::{DataSnapshot, BuildHistoryRecord, load_data_dir, add_build_record, update_stock_after_build, read_csv_optional, add_panel_history_record};
 
 #[tauri::command]
 fn load_data(data_dir: String) -> Result<DataSnapshot, String> {
@@ -26,6 +25,35 @@ fn load_data(data_dir: String) -> Result<DataSnapshot, String> {
             let error_msg = format!("❌ Error loading data: {e:#}");
             println!("{}", error_msg);
             Err(error_msg)
+        }
+    }
+}
+
+#[tauri::command]
+fn load_panel_history(data_dir: String) -> Result<Vec<BuildHistoryRecord>, String> {
+    println!("🦀 load_panel_history command called with path: {}", data_dir);
+    let path = PathBuf::from(data_dir);
+    
+    if !path.exists() {
+        let error_msg = format!("❌ Data directory does not exist: {}", path.display());
+        println!("{}", error_msg);
+        return Err(error_msg);
+    }
+    
+    let history_file = path.join("panel_history.csv");
+    if !history_file.exists() {
+        println!("📄 Panel history file doesn't exist yet, returning empty list");
+        return Ok(Vec::new());
+    }
+    
+    match read_csv_optional::<BuildHistoryRecord>(&history_file) {
+        Some(history) => {
+            println!("✅ Panel history loaded: {} records", history.len());
+            Ok(history)
+        },
+        None => {
+            println!("📄 No panel history found, returning empty list");
+            Ok(Vec::new())
         }
     }
 }
@@ -60,9 +88,16 @@ fn record_build(
         notes,
     };
     
-    // Add the build record
+    // Add the build record to both files
     if let Err(e) = add_build_record(&path, &record) {
         let error_msg = format!("❌ Error recording build: {e:#}");
+        println!("{}", error_msg);
+        return Err(error_msg);
+    }
+    
+    // Also add to panel_history.csv
+    if let Err(e) = add_panel_history_record(&path, &record) {
+        let error_msg = format!("❌ Error recording panel history: {e:#}");
         println!("{}", error_msg);
         return Err(error_msg);
     }
@@ -121,7 +156,7 @@ pub fn run() {
       println!("✅ Tauri setup complete");
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![load_data, record_build])
+    .invoke_handler(tauri::generate_handler![load_data, record_build, load_panel_history])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
