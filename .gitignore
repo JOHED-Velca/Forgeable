@@ -1,1 +1,6 @@
 run-dev.sh
+
+# Tauri signing keys (NEVER commit these!)
+.tauri/
+*.key
+*.key.pub

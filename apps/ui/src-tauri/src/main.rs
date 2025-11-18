@@ -155,6 +155,7 @@ fn main() {
             println!("✅ Tauri setup complete");
             Ok(())
         })
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![load_data, record_build, load_panel_history])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -25,13 +25,26 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["msi"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "wix": {
+        "upgradeCode": "{CB194B3F-8F6F-422B-8C07-FD60516DEB75}"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": false,
+      "endpoints": ["https://github.com/JOHED-Velca/Forgeable/releases/latest/download/latest.json"],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVBQUQ3OTNEMEREQzBEMTkKUldRWkRkd05QWG10NnNldVZVMEkwY2c0T1l6WVozeFdsb04rcnc4YjhocVdoa1FqOW9EbUFyODQK"
+    }
   }
 }

@@ -31,12 +31,30 @@ jobs:
         working-directory: apps/ui
         run: npm i -D @tauri-apps/cli
 
+      - name: Set version from tag
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF##*/}"
+          VERSION="${TAG#v}"
+          echo "TAURI_BUILD_VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+
       - name: Build Tauri (MSI)
         working-directory: apps/ui
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri:build
 
-      - name: Upload MSI
-        uses: actions/upload-artifact@v4
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
         with:
-          name: forgeable-msi
-          path: apps/ui/src-tauri/target/release/bundle/msi/*.msi
+          draft: false
+          prerelease: false
+          files: |
+            apps/ui/src-tauri/target/release/bundle/msi/*.msi
+            apps/ui/src-tauri/target/release/bundle/msi/*.msi.zip
+            apps/ui/src-tauri/target/release/bundle/msi/*.msi.zip.sig
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
