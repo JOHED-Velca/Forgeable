@@ -1,28 +1,38 @@
 # Forgeable v1.0.0
 
-**Manufacturing Analysis Desktop Application**
+**Manufacturing Analysis & Build Tracking Desktop Application**
 
-Forgeable is a desktop application designed for manufacturing analysis, specifically focused on backpanel assembly production planning. It provides comprehensive Bill of Materials (BOM) analysis, stock-based buildability calculations, and production planning insights.
+Forgeable is a comprehensive desktop application designed for manufacturing analysis and production tracking, specifically focused on panel assembly production planning. It provides Bill of Materials (BOM) analysis, stock-based buildability calculations, build recording, and complete production history tracking.
 
 ## 🚀 Features
 
-### **Panel Analysis**
+### **Panel Analysis & Planning**
 
 - **BOM Explosion**: Break down any panel assembly into its constituent parts and components
 - **Stock-based Buildability**: Calculate how many panels can be built with current inventory
 - **Multi-panel Analysis**: Analyze all panel types simultaneously to see production capacity
+- **Limiting Component Detection**: Identify which parts constrain production capacity
+
+### **Production Tracking**
+
+- **Build Recording**: Record completed panel builds with work orders, sales orders, and customer information
+- **Automatic Inventory Updates**: Stock levels are automatically adjusted when builds are recorded
+- **Production History**: Complete tracking of all panel builds with timestamps and operators
+- **Panel History Management**: Dedicated panel_history.csv for specialized tracking
 
 ### **Manufacturing Intelligence**
 
-- **Limiting Component Detection**: Identify which parts constrain production capacity
-- **Parts Breakdown**: Detailed view of all components needed for manufacturing
-- **Production Planning**: Real-time analysis of what can be built with available stock
+- **Recent Build History**: View recent production activities across all panel types
+- **Production Summary**: Aggregate statistics showing total panels built by type
+- **Stock Management**: Real-time inventory tracking with on-hand, reserved, and available quantities
+- **Customer Tracking**: Track which customers received which panels and quantities
 
-### **User Experience**
+### **Multi-Tab Interface**
 
-- **Clean Interface**: Intuitive desktop application with clear navigation
-- **Real-time Analysis**: Instant feedback and calculations
-- **Professional Reporting**: Formatted results with proper units and descriptions
+- **🔧 Analysis Tab**: BOM analysis, buildability calculations, and parts breakdown
+- **📦 Inventory Tab**: Current stock levels and inventory management
+- **📝 Record Build Tab**: Form for recording completed panel builds
+- **📈 History Tab**: Complete production history and statistics
 
 ## � Screenshots
 
@@ -56,7 +66,9 @@ data/
 ├── assemblies.csv      # Panel definitions
 ├── parts.csv          # Component catalog
 ├── bom_items.csv      # Bill of materials relationships
-└── stock.csv          # Current inventory levels
+├── stock.csv          # Current inventory levels
+├── panel_history.csv  # Panel build history (optional, created automatically)
+└── build_history.csv  # General build history (optional, created automatically)
 ```
 
 #### CSV File Formats
@@ -93,6 +105,13 @@ sku,on_hand_qty,reserved_qty
 LOADSWITCH,120,0
 FLASHER,30,0
 CABLE_GRAY,500,0
+```
+
+**panel_history.csv** (Optional - created automatically when recording builds)
+
+```csv
+id,timestamp,work_order,sales_order,customer,assembly_sku,quantity_built,operator,notes
+550e8400-e29b-41d4-a716-446655440001,2024-11-15T08:30:00Z,WO-2024-001,SO-2024-456,BEACON,type01,3,John Smith,BEACON customer order
 ```
 
 ## 🚦 Getting Started
@@ -141,43 +160,85 @@ npm run tauri:build
 ### Basic Workflow
 
 1. **Load Data**: Click "Load CSV Data" to import your manufacturing data
-2. **Select Panel**: Choose a panel type from the dropdown menu
-3. **Analyze**: Click "Analyze Panel" to perform BOM explosion and buildability analysis
-4. **Review Results**:
-   - View buildability for all panel types in the status section
-   - Examine detailed parts breakdown for the selected panel
-   - Check limiting components that constrain production
+2. **Analyze Panels**:
+   - Go to the Analysis tab
+   - Select a panel type and quantity
+   - Click "Analyze Panel" to perform BOM explosion and buildability analysis
+3. **Record Production**:
+   - Go to the Record Build tab
+   - Fill in work order, sales order, customer, and build details
+   - Click "Record Build" to log the completed production
+4. **Track History**:
+   - Go to the History tab to view complete production history
+   - Load panel history from CSV files
+   - Review production summaries and recent builds
+5. **Monitor Inventory**:
+   - Go to the Inventory tab to check current stock levels
+   - Monitor available vs. reserved quantities
+
+### Tab Functions
+
+#### 🔧 Analysis Tab
+
+- Select panel types and quantities to analyze
+- View detailed parts breakdown
+- See buildability analysis and limiting components
+- Real-time stock-based production capacity calculations
+
+#### 📦 Inventory Tab
+
+- Monitor current stock levels for all parts
+- View on-hand, reserved, and available quantities
+- Identify low-stock items with visual indicators
+
+#### 📝 Record Build Tab
+
+- Record completed panel builds
+- Automatic inventory updates when builds are recorded
+- Track work orders, sales orders, customers, and operators
+- Add production notes and timestamps
+
+#### 📈 History Tab
+
+- View complete build history from CSV data
+- Load panel history from panel_history.csv
+- Review production summaries by panel type
+- Track total quantities built and build counts
 
 ### Understanding the Results
 
-#### Status Section
+#### Analysis Results
 
-Shows how many panels of each type can be manufactured:
-
-```
-✅ Analysis complete! Panel buildability with current stock:
-Type01: 7 panels
-Type02: 12 panels
-Type03: 5 panels
-```
-
-#### Parts Breakdown
-
-Lists all components needed to build one panel:
+Shows buildability analysis for selected panels:
 
 ```
-LOADSWITCH      16 pieces
-FLASHER         1 piece
-Gray cable      2.5 inches
+✅ Analysis complete! Found 8 parts required
+Can build requested 5 panels: ✅
 ```
 
-#### Limiting Components
+#### Build Recording
 
-Identifies bottlenecks in production:
+When recording builds:
 
-- Shows which parts limit production capacity
-- Displays available stock vs. required quantities
-- Calculates maximum possible builds per component
+- Stock levels automatically update
+- Build records are saved to both build_history.csv and panel_history.csv
+- Production timestamps and operator information are tracked
+
+#### Production History
+
+View comprehensive production data:
+
+- Recent builds with work orders and customer information
+- Production summaries showing total panels built by type
+- Complete build history sorted by most recent first
+
+#### Stock Management
+
+Real-time inventory tracking:
+
+- On-hand quantities vs. reserved stock
+- Available stock calculations (on-hand - reserved)
+- Low-stock warnings with visual indicators
 
 ## 🎯 Key Concepts
 
@@ -185,13 +246,36 @@ Identifies bottlenecks in production:
 
 The process of "exploding" a complex assembly into all its individual components. Starting with a finished panel, the system recursively breaks down sub-assemblies until it reaches basic parts, calculating total quantities needed.
 
+### **Build Recording**
+
+Complete production tracking system that records:
+
+- Work orders and sales orders
+- Customer information and panel types
+- Quantities built and production timestamps
+- Operator names and production notes
+- Automatic inventory updates
+
 ### **Limiting Components**
 
-Parts that constrain production capacity. Like a chain being only as strong as its weakest link, production is limited by whichever component runs out first. For example, if you need 16 load switches per panel but only have 120 in stock, you can only build 7 panels (120 ÷ 16 = 7.5, rounded down).
+Parts that constrain production capacity. Production is limited by whichever component runs out first. The system identifies these bottlenecks and shows available stock vs. requirements.
 
-### **Buildability Analysis**
+### **Production History**
 
-Real-time calculation of manufacturing capacity based on current inventory levels, taking into account all component requirements and stock constraints.
+Comprehensive tracking of all manufacturing activities:
+
+- **Recent Build History**: Latest 20 builds from CSV data
+- **Panel Production Summary**: Aggregated statistics by panel type
+- **Complete History**: Full build records from panel_history.csv
+
+### **Stock Management**
+
+Real-time inventory tracking with:
+
+- **On-hand quantities**: Physical stock available
+- **Reserved quantities**: Stock allocated but not yet used
+- **Available stock**: On-hand minus reserved (available for production)
+- **Low-stock indicators**: Visual warnings for items running low
 
 ## 📁 Project Structure
 
@@ -242,12 +326,18 @@ This project follows standard practices:
 
 ### v1.0.0 (Current)
 
-- ✅ Complete BOM explosion functionality
-- ✅ Multi-panel buildability analysis
-- ✅ Professional UI with clean terminology
+- ✅ Complete BOM explosion functionality with limiting component analysis
+- ✅ Multi-tab interface (Analysis, Inventory, Record Build, History)
+- ✅ Build recording system with automatic inventory updates
+- ✅ Production history tracking with panel_history.csv integration
+- ✅ Stock management with on-hand, reserved, and available calculations
+- ✅ Customer and work order tracking
+- ✅ Professional UI with intuitive navigation
 - ✅ Comprehensive error handling and data validation
-- ✅ Snake_case standardization across all layers
-- ✅ Enhanced user experience with descriptive units and formatting
+- ✅ Real-time buildability analysis
+- ✅ Production summary reporting by panel type
+- ✅ Operator and notes tracking for builds
+- ✅ Snake_case standardization across all data layers
 
 ## 📄 License
 
