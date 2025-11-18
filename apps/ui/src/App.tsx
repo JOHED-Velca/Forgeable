@@ -801,193 +801,6 @@ export default function App() {
       <div style={{ display: activeTab === "inventory" ? "block" : "none" }}>
         <h2 style={{ margin: "0 0 20px 0" }}>📦 Inventory Management</h2>
 
-        {/* Build History Section */}
-        {data && data.build_history && data.build_history.length > 0 && (
-          <div
-            style={{
-              background: "#fff",
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              padding: 20,
-              margin: "20px 0",
-            }}
-          >
-            <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
-              📋 Recent Build History
-            </h3>
-            <div style={{ overflow: "auto", maxHeight: 400 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#f8f9fa" }}>
-                    <th
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "left",
-                        borderBottom: "2px solid #dee2e6",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Date/Time
-                    </th>
-                    <th
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "left",
-                        borderBottom: "2px solid #dee2e6",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Panel Type
-                    </th>
-                    <th
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "right",
-                        borderBottom: "2px solid #dee2e6",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Qty
-                    </th>
-                    <th
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "left",
-                        borderBottom: "2px solid #dee2e6",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Work Order
-                    </th>
-                    <th
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "left",
-                        borderBottom: "2px solid #dee2e6",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Sales Order
-                    </th>
-                    <th
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "left",
-                        borderBottom: "2px solid #dee2e6",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Customer
-                    </th>
-                    <th
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "left",
-                        borderBottom: "2px solid #dee2e6",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Operator
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.build_history
-                    .slice()
-                    .sort(
-                      (a, b) =>
-                        new Date(b.timestamp).getTime() -
-                        new Date(a.timestamp).getTime()
-                    )
-                    .slice(0, 20)
-                    .map((record) => (
-                      <tr
-                        key={record.id}
-                        style={{
-                          borderBottom: "1px solid #f1f3f4",
-                        }}
-                      >
-                        <td
-                          style={{
-                            padding: "8px 12px",
-                            fontSize: 11,
-                            fontFamily: "monospace",
-                          }}
-                        >
-                          {new Date(record.timestamp).toLocaleString()}
-                        </td>
-                        <td
-                          style={{
-                            padding: "8px 12px",
-                            fontSize: 12,
-                            fontFamily: "monospace",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {record.assembly_sku}
-                        </td>
-                        <td
-                          style={{
-                            padding: "8px 12px",
-                            textAlign: "right",
-                            fontSize: 12,
-                            fontWeight: 600,
-                          }}
-                        >
-                          {record.quantity_built}
-                        </td>
-                        <td
-                          style={{
-                            padding: "8px 12px",
-                            fontSize: 11,
-                          }}
-                        >
-                          {record.work_order}
-                        </td>
-                        <td
-                          style={{
-                            padding: "8px 12px",
-                            fontSize: 11,
-                          }}
-                        >
-                          {record.sales_order}
-                        </td>
-                        <td
-                          style={{
-                            padding: "8px 12px",
-                            fontSize: 12,
-                          }}
-                        >
-                          {record.customer}
-                        </td>
-                        <td
-                          style={{
-                            padding: "8px 12px",
-                            fontSize: 11,
-                            color: "#666",
-                          }}
-                        >
-                          {record.operator || "-"}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
-              Showing last 20 builds. For complete history, check the
-              History.csv file.
-            </div>
-          </div>
-        )}
-
         {/* Stock Levels Section */}
         {data && data.stock && data.stock.length > 0 && (
           <div
@@ -1117,191 +930,6 @@ export default function App() {
             <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
               ⚠️ indicates low or out-of-stock items. Available = On Hand -
               Reserved.
-            </div>
-          </div>
-        )}
-
-        {/* Assembly Production Summary */}
-        {data && data.build_history && data.build_history.length > 0 && (
-          <div
-            style={{
-              background: "#fff",
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              padding: 20,
-              margin: "20px 0",
-            }}
-          >
-            <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
-              🏭 Panel Production Summary
-            </h3>
-            <div style={{ overflow: "auto", maxHeight: 400 }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#f8f9fa" }}>
-                    <th
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "left",
-                        borderBottom: "2px solid #dee2e6",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Panel Type
-                    </th>
-                    <th
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "left",
-                        borderBottom: "2px solid #dee2e6",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Panel Name
-                    </th>
-                    <th
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "right",
-                        borderBottom: "2px solid #dee2e6",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Total Built
-                    </th>
-                    <th
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "right",
-                        borderBottom: "2px solid #dee2e6",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Builds
-                    </th>
-                    <th
-                      style={{
-                        padding: "10px 12px",
-                        textAlign: "left",
-                        borderBottom: "2px solid #dee2e6",
-                        fontSize: 12,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Last Built
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    // Group builds by assembly_sku and calculate totals
-                    const assemblyStats = new Map<
-                      string,
-                      {
-                        totalQuantity: number;
-                        buildCount: number;
-                        lastBuild: string;
-                        name: string;
-                      }
-                    >();
-
-                    // Process build history
-                    data.build_history.forEach((record) => {
-                      const existing = assemblyStats.get(record.assembly_sku);
-                      const recordDate = new Date(record.timestamp);
-
-                      if (existing) {
-                        existing.totalQuantity += record.quantity_built;
-                        existing.buildCount += 1;
-                        const existingDate = new Date(existing.lastBuild);
-                        if (recordDate > existingDate) {
-                          existing.lastBuild = record.timestamp;
-                        }
-                      } else {
-                        // Find assembly name
-                        const assembly = data.assemblies.find(
-                          (a) => a.assembly_sku === record.assembly_sku
-                        );
-                        assemblyStats.set(record.assembly_sku, {
-                          totalQuantity: record.quantity_built,
-                          buildCount: 1,
-                          lastBuild: record.timestamp,
-                          name: assembly?.name || record.assembly_sku,
-                        });
-                      }
-                    });
-
-                    // Convert to array and sort by total quantity (highest first)
-                    return Array.from(assemblyStats.entries())
-                      .sort(([, a], [, b]) => b.totalQuantity - a.totalQuantity)
-                      .map(([assemblySku, stats]) => (
-                        <tr
-                          key={assemblySku}
-                          style={{
-                            borderBottom: "1px solid #f1f3f4",
-                          }}
-                        >
-                          <td
-                            style={{
-                              padding: "8px 12px",
-                              fontSize: 12,
-                              fontFamily: "monospace",
-                              fontWeight: 600,
-                            }}
-                          >
-                            {assemblySku}
-                          </td>
-                          <td
-                            style={{
-                              padding: "8px 12px",
-                              fontSize: 12,
-                            }}
-                          >
-                            {stats.name}
-                          </td>
-                          <td
-                            style={{
-                              padding: "8px 12px",
-                              textAlign: "right",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#28a745",
-                            }}
-                          >
-                            {stats.totalQuantity}
-                          </td>
-                          <td
-                            style={{
-                              padding: "8px 12px",
-                              textAlign: "right",
-                              fontSize: 12,
-                              color: "#666",
-                            }}
-                          >
-                            {stats.buildCount}
-                          </td>
-                          <td
-                            style={{
-                              padding: "8px 12px",
-                              fontSize: 11,
-                              color: "#666",
-                            }}
-                          >
-                            {new Date(stats.lastBuild).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ));
-                  })()}
-                </tbody>
-              </table>
-            </div>
-            <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
-              Summary of all panel types built from production history. Sorted
-              by total quantity produced.
             </div>
           </div>
         )}
@@ -1587,6 +1215,377 @@ export default function App() {
       <div style={{ display: activeTab === "history" ? "block" : "none" }}>
         <h2 style={{ margin: "0 0 20px 0" }}>📈 Panel Build History</h2>
 
+        {/* Build History Section from CSV data */}
+        {data && data.build_history && data.build_history.length > 0 && (
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              padding: 20,
+              margin: "20px 0",
+            }}
+          >
+            <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
+              📋 Recent Build History
+            </h3>
+            <div style={{ overflow: "auto", maxHeight: 400 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f8f9fa" }}>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Date/Time
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Panel Type
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Qty
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Work Order
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Sales Order
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Customer
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Operator
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.build_history
+                    .slice()
+                    .sort(
+                      (a, b) =>
+                        new Date(b.timestamp).getTime() -
+                        new Date(a.timestamp).getTime()
+                    )
+                    .slice(0, 20)
+                    .map((record) => (
+                      <tr
+                        key={record.id}
+                        style={{
+                          borderBottom: "1px solid #f1f3f4",
+                        }}
+                      >
+                        <td
+                          style={{
+                            padding: "8px 12px",
+                            fontSize: 11,
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          {new Date(record.timestamp).toLocaleString()}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px 12px",
+                            fontSize: 12,
+                            fontFamily: "monospace",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {record.assembly_sku}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px 12px",
+                            textAlign: "right",
+                            fontSize: 12,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {record.quantity_built}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px 12px",
+                            fontSize: 11,
+                          }}
+                        >
+                          {record.work_order}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px 12px",
+                            fontSize: 11,
+                          }}
+                        >
+                          {record.sales_order}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px 12px",
+                            fontSize: 12,
+                          }}
+                        >
+                          {record.customer}
+                        </td>
+                        <td
+                          style={{
+                            padding: "8px 12px",
+                            fontSize: 11,
+                            color: "#666",
+                          }}
+                        >
+                          {record.operator || "-"}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
+              Showing last 20 builds from loaded CSV data.
+            </div>
+          </div>
+        )}
+
+        {/* Assembly Production Summary */}
+        {data && data.build_history && data.build_history.length > 0 && (
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #ddd",
+              borderRadius: 8,
+              padding: 20,
+              margin: "20px 0",
+            }}
+          >
+            <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
+              🏭 Panel Production Summary
+            </h3>
+            <div style={{ overflow: "auto", maxHeight: 400 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#f8f9fa" }}>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Panel Type
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Panel Name
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Total Built
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Builds
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Last Built
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    // Group builds by assembly_sku and calculate totals
+                    const assemblyStats = new Map<
+                      string,
+                      {
+                        totalQuantity: number;
+                        buildCount: number;
+                        lastBuild: string;
+                        name: string;
+                      }
+                    >();
+
+                    // Process build history
+                    data.build_history.forEach((record) => {
+                      const existing = assemblyStats.get(record.assembly_sku);
+                      const recordDate = new Date(record.timestamp);
+
+                      if (existing) {
+                        existing.totalQuantity += record.quantity_built;
+                        existing.buildCount += 1;
+                        const existingDate = new Date(existing.lastBuild);
+                        if (recordDate > existingDate) {
+                          existing.lastBuild = record.timestamp;
+                        }
+                      } else {
+                        // Find assembly name
+                        const assembly = data.assemblies.find(
+                          (a) => a.assembly_sku === record.assembly_sku
+                        );
+                        assemblyStats.set(record.assembly_sku, {
+                          totalQuantity: record.quantity_built,
+                          buildCount: 1,
+                          lastBuild: record.timestamp,
+                          name: assembly?.name || record.assembly_sku,
+                        });
+                      }
+                    });
+
+                    // Convert to array and sort by total quantity (highest first)
+                    return Array.from(assemblyStats.entries())
+                      .sort(([, a], [, b]) => b.totalQuantity - a.totalQuantity)
+                      .map(([assemblySku, stats]) => (
+                        <tr
+                          key={assemblySku}
+                          style={{
+                            borderBottom: "1px solid #f1f3f4",
+                          }}
+                        >
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: 12,
+                              fontFamily: "monospace",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {assemblySku}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: 12,
+                            }}
+                          >
+                            {stats.name}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              textAlign: "right",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: "#28a745",
+                            }}
+                          >
+                            {stats.totalQuantity}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              textAlign: "right",
+                              fontSize: 12,
+                              color: "#666",
+                            }}
+                          >
+                            {stats.buildCount}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: 11,
+                              color: "#666",
+                            }}
+                          >
+                            {new Date(stats.lastBuild).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
+              Summary of all panel types built from production history. Sorted
+              by total quantity produced.
+            </div>
+          </div>
+        )}
+
         <div
           style={{
             background: "#f9f9f9",
@@ -1597,7 +1596,7 @@ export default function App() {
           }}
         >
           <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
-            📋 Load Panel History
+            📋 Load Panel History from File
           </h3>
           <p style={{ margin: "0 0 16px 0", color: "#666", fontSize: 14 }}>
             Load and view the complete build history from the panel_history.csv
