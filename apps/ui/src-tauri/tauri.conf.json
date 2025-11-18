@@ -43,7 +43,9 @@
     "updater": {
       "active": true,
       "dialog": false,
-      "endpoints": ["https://github.com/JOHED-Velca/Forgeable/releases/latest/download/latest.json"],
+      "endpoints": [
+        "https://github.com/JOHED-Velca/Forgeable/releases/latest/download/latest.json"
+      ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEVBQUQ3OTNEMEREQzBEMTkKUldRWkRkd05QWG10NnNldVZVMEkwY2c0T1l6WVozeFdsb04rcnc4YjhocVdoa1FqOW9EbUFyODQK"
     }
   }

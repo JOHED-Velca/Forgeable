@@ -13,7 +13,7 @@ Your Forgeable app now supports **two types of automatic updates**:
 
 ### 1. MSI Major Upgrades (`tauri.conf.json`)
 
-- **Stable upgradeCode**: `{CB194B3F-8F6F-422B-8C07-FD60516DEB75}` 
+- **Stable upgradeCode**: `{CB194B3F-8F6F-422B-8C07-FD60516DEB75}`
   - ⚠️ **NEVER CHANGE THIS GUID** - it's what Windows uses to identify your app for upgrades
 - **MSI-only builds**: Only builds MSI installers (not other formats) for consistent upgrade behavior
 - **Version management**: Each release gets a new version number that Windows recognizes as "newer"
@@ -40,13 +40,14 @@ You need to add the updater signing keys to your GitHub repository secrets:
 2. Navigate to **Settings** → **Secrets and variables** → **Actions**
 3. Add these secrets:
 
-   - **`TAURI_SIGNING_PRIVATE_KEY`**: 
+   - **`TAURI_SIGNING_PRIVATE_KEY`**:
+
      ```bash
      # Copy the content of this file:
      cat ~/.tauri/forgeable-updater.key
      ```
-   
-   - **`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`**: 
+
+   - **`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`**:
      ```
      # The password you entered when generating the key
      your_chosen_password_here
@@ -55,6 +56,7 @@ You need to add the updater signing keys to your GitHub repository secrets:
 ### Step 2: Test MSI Upgrades
 
 1. **Create v1.0.1 release**:
+
    ```bash
    git tag v1.0.1
    git push origin v1.0.1
@@ -63,6 +65,7 @@ You need to add the updater signing keys to your GitHub repository secrets:
 2. **Install on test machine**: Download and install the MSI from the GitHub release
 
 3. **Create v1.0.2 release**:
+
    ```bash
    # Update version in tauri.conf.json if needed
    git tag v1.0.2
@@ -80,19 +83,19 @@ To make the app check for updates on startup, add this to your React app:
 
 ```typescript
 // In your main App.tsx or a startup component
-import { check } from '@tauri-apps/plugin-updater';
+import { check } from "@tauri-apps/plugin-updater";
 
 useEffect(() => {
   async function checkForUpdates() {
     try {
       const update = await check();
       if (update?.available) {
-        console.log('Update available:', update.version);
+        console.log("Update available:", update.version);
         await update.downloadAndInstall();
         // App will restart automatically after update
       }
     } catch (error) {
-      console.error('Update check failed:', error);
+      console.error("Update check failed:", error);
     }
   }
 
@@ -108,7 +111,7 @@ useEffect(() => {
 2. **Bump version** in `apps/ui/src-tauri/tauri.conf.json`:
    ```json
    {
-     "version": "1.0.2"  // Increment from previous version
+     "version": "1.0.2" // Increment from previous version
    }
    ```
 3. **Create and push tag**:
@@ -129,19 +132,23 @@ useEffect(() => {
 Since you mentioned the main goal is automatic updates on work PCs, you have several options:
 
 #### Option A: MSI Network Deployment
+
 ```powershell
 # IT can deploy new versions silently via Group Policy or scripts
 msiexec /i "\\network\path\Forgeable_1.0.2.msi" /qn /norestart
 ```
 
 #### Option B: In-App Updates (Recommended)
+
 - Users just open the app
-- App checks GitHub releases automatically  
+- App checks GitHub releases automatically
 - Downloads and installs update silently
 - App restarts with new version
 
 #### Option C: Scheduled Updates
+
 Create a simple PowerShell script for IT:
+
 ```powershell
 # check-forgeable-updates.ps1
 $latest = Invoke-RestMethod "https://api.github.com/repos/JOHED-Velca/Forgeable/releases/latest"
@@ -155,16 +162,19 @@ Remove-Item $tempFile
 ## Important Notes
 
 ### Version Management Rules:
+
 - ✅ **Always increment version**: `1.0.1` → `1.0.2` → `1.0.3`
 - ✅ **Keep upgradeCode unchanged**: `{CB194B3F-8F6F-422B-8C07-FD60516DEB75}`
 - ⚠️ **Never downgrade version numbers**: Windows will reject the install
 
 ### User Data:
+
 - User configurations saved to: `%APPDATA%\\Forgeable`
 - Data files preserved during upgrades
 - No manual backup needed
 
 ### Security:
+
 - All updates are cryptographically signed
 - In-app updater only accepts signed updates
 - MSI files are signed by GitHub Actions
@@ -172,20 +182,24 @@ Remove-Item $tempFile
 ## Troubleshooting
 
 ### "Cannot install because newer version exists"
+
 - Version in `tauri.conf.json` is lower than installed version
 - Increment the version number and rebuild
 
 ### "Update check fails"
+
 - Check network connectivity
 - Verify GitHub repository is public or token has access
 - Check repository secrets are correctly set
 
 ### "MSI doesn't upgrade in-place"
+
 - Verify upgradeCode hasn't changed
 - Ensure version is higher than current
 - Check that targets is set to `["msi"]` only
 
 ### "App doesn't detect updates"
+
 - Verify the updater plugin is properly initialized
 - Check the endpoint URL in `tauri.conf.json`
 - Ensure GitHub releases contain the required files
