@@ -305,12 +305,21 @@ export default function App() {
         padding: 20,
         fontFamily: "Inter, system-ui, sans-serif",
         maxWidth: 1200,
+        margin: "0 auto",
+        width: "100%",
+        textAlign: "center",
       }}
     >
       <h1>🔧 Forgeable — Manufacturing BOM Analysis</h1>
 
       {/* Tab Navigation */}
-      <div style={{ borderBottom: "2px solid #dee2e6", marginBottom: 20 }}>
+      <div
+        style={{
+          borderBottom: "2px solid #dee2e6",
+          marginBottom: 20,
+          textAlign: "left",
+        }}
+      >
         <div style={{ display: "flex", gap: 0 }}>
           <button
             onClick={() => setActiveTab("analysis")}
@@ -394,6 +403,7 @@ export default function App() {
           padding: 16,
           borderRadius: 8,
           marginBottom: 20,
+          textAlign: "left",
         }}
       >
         <h3 style={{ margin: 0, marginBottom: 8, color: "#0066cc" }}>Status</h3>
@@ -410,6 +420,7 @@ export default function App() {
           padding: 16,
           borderRadius: 8,
           marginBottom: 20,
+          textAlign: "left",
         }}
       >
         <h3 style={{ margin: 0, marginBottom: 12 }}>1. Load CSV Data</h3>
@@ -459,7 +470,12 @@ export default function App() {
       </div>
 
       {/* Analysis Tab */}
-      <div style={{ display: activeTab === "analysis" ? "block" : "none" }}>
+      <div
+        style={{
+          display: activeTab === "analysis" ? "block" : "none",
+          textAlign: "left",
+        }}
+      >
         {data && (
           <>
             {/* Assembly Selection */}
@@ -798,7 +814,12 @@ export default function App() {
       </div>
 
       {/* Inventory Tab */}
-      <div style={{ display: activeTab === "inventory" ? "block" : "none" }}>
+      <div
+        style={{
+          display: activeTab === "inventory" ? "block" : "none",
+          textAlign: "left",
+        }}
+      >
         <h2 style={{ margin: "0 0 20px 0" }}>📦 Inventory Management</h2>
 
         {/* Stock Levels Section */}
@@ -936,7 +957,12 @@ export default function App() {
       </div>
 
       {/* Record Build Tab */}
-      <div style={{ display: activeTab === "record" ? "block" : "none" }}>
+      <div
+        style={{
+          display: activeTab === "record" ? "block" : "none",
+          textAlign: "left",
+        }}
+      >
         <h2 style={{ margin: "0 0 20px 0" }}>📝 Record Panel Build</h2>
 
         {data && (
@@ -1212,7 +1238,12 @@ export default function App() {
       </div>
 
       {/* History Tab */}
-      <div style={{ display: activeTab === "history" ? "block" : "none" }}>
+      <div
+        style={{
+          display: activeTab === "history" ? "block" : "none",
+          textAlign: "left",
+        }}
+      >
         <h2 style={{ margin: "0 0 20px 0" }}>📈 Panel Build History</h2>
 
         {/* Build History Section from CSV data */}
