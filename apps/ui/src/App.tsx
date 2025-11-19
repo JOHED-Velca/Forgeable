@@ -310,7 +310,7 @@ export default function App() {
         textAlign: "center",
       }}
     >
-      <h1>🔧 Forgeable — Manufacturing BOM Analysis</h1>
+      <h1>🔧 Forgeable</h1>
 
       {/* Tab Navigation */}
       <div
