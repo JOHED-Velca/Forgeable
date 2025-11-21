@@ -1,8 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { DataSnapshot, BuildHistoryRecord } from "../domain/types";
+import type { DataSnapshot, BuildHistoryRecord, InventoryItem } from "../domain/types";
 
 export async function loadData(dataDir: string): Promise<DataSnapshot> {
   return await invoke<DataSnapshot>("load_data", { dataDir });
+}
+
+export async function loadMainInventory(dataDir: string): Promise<InventoryItem[]> {
+  return await invoke<InventoryItem[]>("load_main_inventory", { dataDir });
 }
 
 export async function recordBuild(

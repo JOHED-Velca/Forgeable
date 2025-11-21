@@ -274,3 +274,21 @@ pub fn add_panel_history_record(data_dir: &Path, record: &BuildHistoryRecord) ->
     
     Ok(())
 }
+
+pub fn load_main_inventory(data_dir: &Path) -> Result<Vec<InventoryItem>> {
+    let main_inventory_path = data_dir.join("main_inventory.csv");
+    
+    if !main_inventory_path.exists() {
+        return Err(anyhow::anyhow!("main_inventory.csv not found in {}", data_dir.display()));
+    }
+    
+    let mut inventory_items = read_csv::<InventoryItem>(&main_inventory_path)
+        .context("Failed to read main_inventory.csv")?;
+    
+    // Calculate available_qty for each item (on_hand_qty - reserved_qty)
+    for item in &mut inventory_items {
+        item.available_qty = item.on_hand_qty - item.reserved_qty;
+    }
+    
+    Ok(inventory_items)
+}

@@ -1,7 +1,7 @@
 mod data;
 
 use std::path::PathBuf;
-use data::{DataSnapshot, BuildHistoryRecord, load_data_dir, add_build_record, update_stock_after_build, read_csv_optional, add_panel_history_record};
+use data::{DataSnapshot, BuildHistoryRecord, InventoryItem, load_data_dir, add_build_record, update_stock_after_build, read_csv_optional, add_panel_history_record, load_main_inventory};
 
 #[tauri::command]
 fn load_data(data_dir: String) -> Result<DataSnapshot, String> {
@@ -139,6 +139,30 @@ fn record_build(
     }
 }
 
+#[tauri::command]
+fn load_main_inventory(data_dir: String) -> Result<Vec<InventoryItem>, String> {
+    println!("🦀 load_main_inventory command called with path: {}", data_dir);
+    let path = PathBuf::from(data_dir);
+    
+    if !path.exists() {
+        let error_msg = format!("❌ Data directory does not exist: {}", path.display());
+        println!("{}", error_msg);
+        return Err(error_msg);
+    }
+    
+    match data::load_main_inventory(&path) {
+        Ok(inventory) => {
+            println!("✅ Main inventory loaded successfully: {} items", inventory.len());
+            Ok(inventory)
+        },
+        Err(e) => {
+            let error_msg = format!("❌ Error loading main inventory: {e:#}");
+            println!("{}", error_msg);
+            Err(error_msg)
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   println!("🦀 Tauri app starting...");
@@ -156,7 +180,7 @@ pub fn run() {
       println!("✅ Tauri setup complete");
       Ok(())
     })
-    .invoke_handler(tauri::generate_handler![load_data, record_build, load_panel_history])
+    .invoke_handler(tauri::generate_handler![load_data, record_build, load_panel_history, load_main_inventory])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { loadData, recordBuild, loadPanelHistory } from "./services/native";
+import { loadData, recordBuild, loadPanelHistory, loadMainInventory } from "./services/native";
 import type {
   SKU,
   DataSnapshot,
   Buildability,
   BuildHistoryRecord,
+  InventoryItem,
 } from "./domain/types";
 import { indexBomByParent, explodeBom } from "./domain/bomExplode";
 
@@ -38,6 +39,10 @@ export default function App() {
   const [isRecordingBuild, setIsRecordingBuild] = useState(false);
   const [panelHistory, setPanelHistory] = useState<BuildHistoryRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  
+  // Main inventory state
+  const [mainInventory, setMainInventory] = useState<InventoryItem[]>([]);
+  const [isLoadingMainInventory, setIsLoadingMainInventory] = useState(false);
 
   // Keep existing validation function
   const validateCsvData = (
@@ -296,6 +301,29 @@ export default function App() {
       setPanelHistory([]);
     } finally {
       setIsLoadingHistory(false);
+    }
+  };
+
+  const loadMainInventoryData = async () => {
+    if (!selectedFolder) {
+      setTestStatus("❌ Please select a data folder first");
+      return;
+    }
+
+    setIsLoadingMainInventory(true);
+    try {
+      const inventory = await loadMainInventory(selectedFolder);
+      setMainInventory(inventory);
+      setTestStatus(`✅ Main inventory loaded: ${inventory.length} items found`);
+    } catch (error) {
+      setTestStatus(
+        `❌ Failed to load main inventory: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      setMainInventory([]);
+    } finally {
+      setIsLoadingMainInventory(false);
     }
   };
 
@@ -822,8 +850,55 @@ export default function App() {
       >
         <h2 style={{ margin: "0 0 20px 0" }}>📦 Inventory Management</h2>
 
-        {/* Stock Levels Section */}
-        {data && data.stock && data.stock.length > 0 && (
+        {/* Load Main Inventory Section */}
+        <div
+          style={{
+            background: "#f9f9f9",
+            border: "1px solid #ddd",
+            borderRadius: 8,
+            padding: 20,
+            margin: "20px 0",
+          }}
+        >
+          <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
+            📋 Load Main Inventory from File
+          </h3>
+          <p style={{ margin: "0 0 16px 0", color: "#666", fontSize: 14 }}>
+            Load and view the complete inventory data from the main_inventory.csv file.
+          </p>
+
+          <button
+            onClick={loadMainInventoryData}
+            disabled={isLoadingMainInventory || !selectedFolder}
+            style={{
+              background: !selectedFolder
+                ? "#6c757d"
+                : isLoadingMainInventory
+                ? "#ccc"
+                : "#007bff",
+              color: "white",
+              border: "none",
+              padding: "12px 24px",
+              borderRadius: 6,
+              cursor:
+                !selectedFolder || isLoadingMainInventory ? "not-allowed" : "pointer",
+              fontSize: 14,
+              fontWeight: 600,
+              marginBottom: 16,
+            }}
+          >
+            {isLoadingMainInventory ? "Loading..." : "Load Main Inventory"}
+          </button>
+
+          {!selectedFolder && (
+            <p style={{ margin: "8px 0 0 0", color: "#dc3545", fontSize: 12 }}>
+              Please select a data folder first
+            </p>
+          )}
+        </div>
+
+        {/* Main Inventory Levels Section */}
+        {mainInventory.length > 0 && (
           <div
             style={{
               background: "#fff",
@@ -834,7 +909,7 @@ export default function App() {
             }}
           >
             <h3 style={{ margin: "0 0 16px 0", color: "#333" }}>
-              📊 Current Stock Levels
+              📊 Main Inventory Levels ({mainInventory.length} items)
             </h3>
             <div style={{ overflow: "auto", maxHeight: 400 }}>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -849,7 +924,29 @@ export default function App() {
                         fontWeight: 600,
                       }}
                     >
-                      Part SKU
+                      SKU
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Name
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "center",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      UOM
                     </th>
                     <th
                       style={{
@@ -884,23 +981,48 @@ export default function App() {
                     >
                       Available
                     </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "right",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Reorder Point
+                    </th>
+                    <th
+                      style={{
+                        padding: "10px 12px",
+                        textAlign: "left",
+                        borderBottom: "2px solid #dee2e6",
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Supplier
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.stock
+                  {mainInventory
                     .slice()
                     .sort((a, b) => a.sku.localeCompare(b.sku))
-                    .map((stockItem) => {
-                      const available =
-                        stockItem.on_hand_qty - stockItem.reserved_qty;
-                      const isLowStock = available <= 0;
+                    .map((item) => {
+                      const isLowStock = item.available_qty <= (item.reorder_point || 0);
+                      const isOutOfStock = item.available_qty <= 0;
 
                       return (
                         <tr
-                          key={stockItem.sku}
+                          key={item.sku}
                           style={{
                             borderBottom: "1px solid #f1f3f4",
-                            background: isLowStock ? "#fff5f5" : "transparent",
+                            background: isOutOfStock 
+                              ? "#fff5f5" 
+                              : isLowStock 
+                              ? "#fffbf0" 
+                              : "transparent",
                           }}
                         >
                           <td
@@ -908,9 +1030,28 @@ export default function App() {
                               padding: "8px 12px",
                               fontSize: 12,
                               fontFamily: "monospace",
+                              fontWeight: 600,
                             }}
                           >
-                            {stockItem.sku}
+                            {item.sku}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: 12,
+                            }}
+                          >
+                            {item.name}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              textAlign: "center",
+                              fontSize: 11,
+                              color: "#666",
+                            }}
+                          >
+                            {item.uom}
                           </td>
                           <td
                             style={{
@@ -919,7 +1060,7 @@ export default function App() {
                               fontSize: 12,
                             }}
                           >
-                            {stockItem.on_hand_qty}
+                            {item.on_hand_qty}
                           </td>
                           <td
                             style={{
@@ -928,7 +1069,7 @@ export default function App() {
                               fontSize: 12,
                             }}
                           >
-                            {stockItem.reserved_qty}
+                            {item.reserved_qty}
                           </td>
                           <td
                             style={{
@@ -936,11 +1077,35 @@ export default function App() {
                               textAlign: "right",
                               fontSize: 12,
                               fontWeight: 600,
-                              color: isLowStock ? "#dc3545" : "#28a745",
+                              color: isOutOfStock 
+                                ? "#dc3545" 
+                                : isLowStock 
+                                ? "#fd7e14" 
+                                : "#28a745",
                             }}
                           >
-                            {Math.max(0, available)}
-                            {isLowStock && " ⚠️"}
+                            {item.available_qty}
+                            {isOutOfStock && " ❌"}
+                            {isLowStock && !isOutOfStock && " ⚠️"}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              textAlign: "right",
+                              fontSize: 12,
+                              color: "#666",
+                            }}
+                          >
+                            {item.reorder_point || "-"}
+                          </td>
+                          <td
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: 11,
+                              color: "#666",
+                            }}
+                          >
+                            {item.supplier || "-"}
                           </td>
                         </tr>
                       );
@@ -949,9 +1114,25 @@ export default function App() {
               </table>
             </div>
             <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
-              ⚠️ indicates low or out-of-stock items. Available = On Hand -
-              Reserved.
+              ❌ indicates out-of-stock items. ⚠️ indicates items below reorder point. 
+              Available = On Hand - Reserved.
             </div>
+          </div>
+        )}
+
+        {mainInventory.length === 0 && selectedFolder && (
+          <div
+            style={{
+              background: "#fff3cd",
+              border: "1px solid #ffeaa7",
+              borderRadius: 8,
+              padding: 16,
+              margin: "20px 0",
+            }}
+          >
+            <p style={{ margin: 0, color: "#856404" }}>
+              📝 No main inventory data found. Click "Load Main Inventory" to load data from main_inventory.csv.
+            </p>
           </div>
         )}
       </div>
