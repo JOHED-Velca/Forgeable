@@ -317,12 +317,16 @@ export default function App() {
 
     setIsLoadingMainInventory(true);
     try {
+      console.log("Loading main inventory from:", selectedFolder);
       const inventory = await loadMainInventory(selectedFolder);
+      console.log("Received inventory data:", inventory);
+      console.log("Inventory length:", inventory.length);
       setMainInventory(inventory);
       setTestStatus(
         `✅ Main inventory loaded: ${inventory.length} items found`
       );
     } catch (error) {
+      console.error("Error loading main inventory:", error);
       setTestStatus(
         `❌ Failed to load main inventory: ${
           error instanceof Error ? error.message : String(error)
@@ -908,7 +912,11 @@ export default function App() {
         </div>
 
         {/* Main Inventory Levels Section */}
-        {mainInventory.length > 0 && (
+        {(() => {
+          console.log("Main inventory state:", mainInventory);
+          console.log("Main inventory length:", mainInventory.length);
+          return mainInventory.length > 0;
+        })() && (
           <div
             style={{
               background: "#fff",
