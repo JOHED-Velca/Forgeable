@@ -1,7 +1,7 @@
 mod data;
 
 use std::path::PathBuf;
-use data::{DataSnapshot, BuildHistoryRecord, InventoryItem, load_data_dir, add_build_record, update_stock_after_build, read_csv_optional, add_panel_history_record, load_main_inventory};
+use data::{DataSnapshot, BuildHistoryRecord, InventoryItem, load_data_dir, add_build_record, update_stock_after_build, read_csv_optional, add_panel_history_record};
 
 #[tauri::command]
 fn load_data(data_dir: String) -> Result<DataSnapshot, String> {

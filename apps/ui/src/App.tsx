@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { loadData, recordBuild, loadPanelHistory, loadMainInventory } from "./services/native";
+import {
+  loadData,
+  recordBuild,
+  loadPanelHistory,
+  loadMainInventory,
+} from "./services/native";
 import type {
   SKU,
   DataSnapshot,
@@ -39,7 +44,7 @@ export default function App() {
   const [isRecordingBuild, setIsRecordingBuild] = useState(false);
   const [panelHistory, setPanelHistory] = useState<BuildHistoryRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  
+
   // Main inventory state
   const [mainInventory, setMainInventory] = useState<InventoryItem[]>([]);
   const [isLoadingMainInventory, setIsLoadingMainInventory] = useState(false);
@@ -314,7 +319,9 @@ export default function App() {
     try {
       const inventory = await loadMainInventory(selectedFolder);
       setMainInventory(inventory);
-      setTestStatus(`✅ Main inventory loaded: ${inventory.length} items found`);
+      setTestStatus(
+        `✅ Main inventory loaded: ${inventory.length} items found`
+      );
     } catch (error) {
       setTestStatus(
         `❌ Failed to load main inventory: ${
@@ -864,7 +871,8 @@ export default function App() {
             📋 Load Main Inventory from File
           </h3>
           <p style={{ margin: "0 0 16px 0", color: "#666", fontSize: 14 }}>
-            Load and view the complete inventory data from the main_inventory.csv file.
+            Load and view the complete inventory data from the
+            main_inventory.csv file.
           </p>
 
           <button
@@ -881,7 +889,9 @@ export default function App() {
               padding: "12px 24px",
               borderRadius: 6,
               cursor:
-                !selectedFolder || isLoadingMainInventory ? "not-allowed" : "pointer",
+                !selectedFolder || isLoadingMainInventory
+                  ? "not-allowed"
+                  : "pointer",
               fontSize: 14,
               fontWeight: 600,
               marginBottom: 16,
@@ -1010,7 +1020,8 @@ export default function App() {
                     .slice()
                     .sort((a, b) => a.sku.localeCompare(b.sku))
                     .map((item) => {
-                      const isLowStock = item.available_qty <= (item.reorder_point || 0);
+                      const isLowStock =
+                        item.available_qty <= (item.reorder_point || 0);
                       const isOutOfStock = item.available_qty <= 0;
 
                       return (
@@ -1018,10 +1029,10 @@ export default function App() {
                           key={item.sku}
                           style={{
                             borderBottom: "1px solid #f1f3f4",
-                            background: isOutOfStock 
-                              ? "#fff5f5" 
-                              : isLowStock 
-                              ? "#fffbf0" 
+                            background: isOutOfStock
+                              ? "#fff5f5"
+                              : isLowStock
+                              ? "#fffbf0"
                               : "transparent",
                           }}
                         >
@@ -1077,10 +1088,10 @@ export default function App() {
                               textAlign: "right",
                               fontSize: 12,
                               fontWeight: 600,
-                              color: isOutOfStock 
-                                ? "#dc3545" 
-                                : isLowStock 
-                                ? "#fd7e14" 
+                              color: isOutOfStock
+                                ? "#dc3545"
+                                : isLowStock
+                                ? "#fd7e14"
                                 : "#28a745",
                             }}
                           >
@@ -1114,8 +1125,8 @@ export default function App() {
               </table>
             </div>
             <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
-              ❌ indicates out-of-stock items. ⚠️ indicates items below reorder point. 
-              Available = On Hand - Reserved.
+              ❌ indicates out-of-stock items. ⚠️ indicates items below reorder
+              point. Available = On Hand - Reserved.
             </div>
           </div>
         )}
@@ -1131,7 +1142,8 @@ export default function App() {
             }}
           >
             <p style={{ margin: 0, color: "#856404" }}>
-              📝 No main inventory data found. Click "Load Main Inventory" to load data from main_inventory.csv.
+              📝 No main inventory data found. Click "Load Main Inventory" to
+              load data from main_inventory.csv.
             </p>
           </div>
         )}
